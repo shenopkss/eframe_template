@@ -4,6 +4,7 @@
 
 mod app;
 
+use std::collections::HashMap;
 use std::iter::Map;
 pub use app::TemplateApp;
 
@@ -57,12 +58,12 @@ pub struct Column {
     name: String,
     comment: String,
     table: Table,
-    referenceTable: Table,
+    reference_table: Table,
     is_nullable: bool,
     is_unique: bool,
     db_type: String,
     java_type: String,
     size: String,
     export: bool,
-    set: Map<String, String>,
+    set: HashMap<String, String>,
 }
