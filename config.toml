@@ -1,0 +1,17 @@
+[[datasource]]
+database = "kingnet_business"
+driver= "mysql"
+host = "172.16.32.243"
+port = 3306
+username = "root"
+password = "fivekingnet"
+namespace = "business"
+
+[[datasource]]
+database = "kingnet_server_config"
+driver= "mysql"
+host = "172.16.32.243"
+port = 3306
+username = "root"
+password = "fivekingneT"
+namespace = "business"
