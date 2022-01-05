@@ -1,0 +1,105 @@
+package gm.game.entity;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.excel.annotation.ExcelIgnore;
+import com.alibaba.excel.annotation.ExcelProperty;
+import com.alibaba.excel.annotation.write.style.ColumnWidth;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.extension.activerecord.Model;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler;
+
+import java.util.List;
+import java.io.Serializable;
+import java.time.LocalDateTime;
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.NotEmpty;
+import org.hibernate.validator.constraints.Length;
+import org.hibernate.validator.constraints.Range;
+
+import gm.game.validator.Set;
+import gm.game.validator.BelongsTo;
+import gm.game.validator.DefaultGroup;
+import gm.game.validator.CreateGroup;
+
+/**
+ * <p>
+ * {{ table.comment }}
+ * </p>
+ */
+@Data
+@TableName(autoResultMap = true)
+@EqualsAndHashCode(callSuper = false)
+@ApiModel(value = "{{ table.name }}", description = "{{ table.comment }}")
+@ColumnWidth(20) //Excel默认列宽度
+public class {{ table.name | pascal  }} extends Model<{{ table.name | pascal }}> {
+
+    private static final long serialVersionUID = 1L;
+
+    @ApiModelProperty(value = "主键id")
+    @ExcelIgnore
+    @TableId(value = "{{ table.primaryKey }}", type = IdType.AUTO)
+    private Integer {{ table.primaryKey }};
+
+{% set excel_index = 0 %}
+{% for column in table.columns %}
+    @ApiModelProperty(value = "{{  column.comment }}{% if column.set %}（{% for key,value in column.set %}{{ key }}: {{ value }} {% endfor %}）{% endif %}")
+{% if column.not_null %}
+{% if column.type == 'string' %}
+    @NotEmpty(message = "`{{  column.comment }}`不能为空！", groups = {CreateGroup.class})
+    @Length(max={{  column.length }}, message = "`{{  column.comment }}`长度不能超过{{  column.length }}个字！", groups = {DefaultGroup.class})
+{% else %}
+    @NotNull(message = "`{{  column.comment }}`不能为空！", groups = {CreateGroup.class})
+{% endif %}
+{% endif %}
+{% if column.range %}
+    @Range(min = {{ column.range[0] }}, max={{ column.range[1] }}, message = "`{{  column.comment }}`无效，不在可选范围", groups = {DefaultGroup.class})
+{% endif %}
+{% if column.set %}
+    @Set(targets = { {% for key,value in column.set %}{{ key }}{% if not loop.last %}, {% endif %}{% endfor %} }, message = "无效的`{{  column.comment }}`：%d`", groups = {DefaultGroup.class})
+{% endif %}
+{% if column.export == true %}
+    @ExcelProperty(value = "{% if column.not_null %}*{% endif %}{{ column.comment }}{% if column.set %}（{% for key,value in column.set %}{{ key }}: {{ value }} {% endfor %}）{% endif %}", index = {{ excel_index }})
+{% set excel_index = excel_index + 1 %}
+{% else %}
+    @ExcelIgnore
+{% endif %}
+{% if column.javaType == 'JSONArray' or  'List' in column.javaType  %}
+    @TableField(value = "`{{ column.name }}`", typeHandler = FastjsonTypeHandler.class)
+{% else %}
+    @TableField(value = "`{{ column.name }}`")
+{% endif %}
+{% for fk in table.foreignKeys %}
+{% if column.name == fk.name  %}
+    @BelongsTo(table = "{{ column.referenceTable.name}}", groups = {DefaultGroup.class})
+{% endif %}
+{% endfor %}
+    private {{ column.javaType | raw }} {{ column.name | camel }};
+
+{% endfor %}
+{% for column in table.foreignKeys %}
+    @ApiModelProperty(value = "{{ column.referenceTable.name | pascal }}")
+    @ExcelIgnore
+    @TableField(exist = false)
+    private {{ column.referenceTable.name | pascal }} {{ column.referenceTable.name | camel }};
+
+{% endfor %}
+{% for ftable in table.refTables%}
+    @ApiModelProperty(value = "{{ column.referenceTable.name | pascal }}")
+    @ExcelIgnore
+    @TableField(exist = false)
+    private List<{{ ftable.name | pascal }}> {{ ftable.name | camel }}s;
+
+{% endfor %}
+    @Override
+    public Serializable pkVal() {
+        return this.{{ table.primaryKey }};
+    }
+}

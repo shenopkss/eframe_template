@@ -1,0 +1,281 @@
+package gm.game.controller;
+
+import java.io.*;
+import java.net.URLEncoder;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.fastjson.JSONArray;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import org.springframework.validation.annotation.Validated;
+import lombok.extern.slf4j.Slf4j;
+
+import gm.game.entity.*;
+import gm.game.mapper.*;
+import com.kingnet.utils.AuthUtils;
+
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiParam;
+import io.swagger.annotations.ApiOperation;
+
+import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.kingnet.result.CommonResult;
+import org.springframework.web.multipart.MultipartFile;
+
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.ConstraintViolation;
+import javax.validation.Validator;
+import javax.validation.Valid;
+import java.util.function.Consumer;
+import gm.game.validator.DefaultGroup;
+import gm.game.validator.CreateGroup;
+
+@Api(tags = "{{ table.comment }}")
+@Slf4j
+@Validated
+@RestController
+{#@RequestMapping("/{{ table.name | lower }}")#}
+public class {{ table.name | pascal }}Controller {
+
+    @Autowired
+    Validator validator;
+
+    @Autowired
+    private {{ table.name | pascal }}Mapper mapper;
+
+{% for column in table.foreignKeys %}
+    @Autowired
+    private {{ column.referenceTable.name | pascal }}Mapper {{ column.referenceTable.name | camel }}Mapper;
+
+{% endfor %}
+{% for ftable in table.refTables%}
+    @Autowired
+    private {{ ftable.name | pascal }}Mapper {{ ftable.name | camel }}Mapper;
+
+{% endfor %}
+    @GetMapping("/{{ table.name | lower }}")
+    @ApiOperation(value = "分页查询")
+    public CommonResult<Page<{{ table.name | pascal }}>> query(
+        @ApiParam(name = "当前页", defaultValue = "1") @RequestParam(defaultValue = "1") Integer current,
+        @ApiParam(name = "每页条数", defaultValue = "20") @RequestParam(defaultValue = "20") Integer size,
+        @ApiParam("主键id") @RequestParam(required = false) Integer id,
+{% for column in table.columns %}
+        @ApiParam("{{ column.comment }}") @RequestParam(required = false) {{ column.javaType }} {{ column.name | camel }}{% if not loop.last %},{% endif %}
+
+{% endfor %}
+    ) {
+        LambdaQueryWrapper<{{ table.name | pascal }}> query = new LambdaQueryWrapper<{{ table.name | pascal }}>();
+        if (id != null) {
+            query.eq({{ table.name | pascal }}::getId, id);
+        }
+{% for column in table.columns %}
+        if ({{ column.name | camel }} != null) {
+{% if column.type == 'string' %}
+            query.like({{ table.name | pascal }}::get{{ column.name | pascal }}, {{ column.name | camel }});
+{% elif column.type == 'json' %}
+            query.and(new Consumer<LambdaQueryWrapper<{{ table.name | pascal }}>>() {
+                @Override
+			    public void accept(LambdaQueryWrapper<{{ table.name | pascal }}> queryWrapper) {
+		            for (int i = 0; i <=    {{ column.name | camel }}.size() - 1; i++) {
+                        String jsonStrsqlStatement = String.format("JSON_CONTAINS(`{{column.name}}`, '%s')", {{ column.name | camel }}.get(i));
+                        queryWrapper.apply(jsonStrsqlStatement);
+
+                        String idSqlStatement = String.format("JSON_CONTAINS(JSON_EXTRACT(`{{column.name}}`, '$[*].id'), '%s')", {{ column.name | camel }}.get(i));
+                        queryWrapper.or().apply(idSqlStatement);
+                    }
+                  }
+               });
+{% else %}
+            query.eq({{ table.name | pascal }}::get{{ column.name | pascal }}, {{ column.name | camel }});
+{% endif %}
+        }
+{% endfor %}
+        query.orderByDesc({{ table.name | pascal }}::getId);
+
+        Page<{{ table.name | pascal }}> page = new Page<{{ table.name | pascal }}>(current, size);
+        Page<{{ table.name | pascal }}> result = mapper.selectPage(page, query);
+
+{% for column in table.foreignKeys %}
+        List<Integer> ids = result.getRecords().stream().mapToInt(item -> item.get{{ column.name | pascal }}()).boxed().collect(Collectors.toList());
+        if(ids.size() > 0){
+            List<{{ column.referenceTable.name | pascal }}> {{ column.referenceTable.name | camel }}s = {{ column.referenceTable.name | camel }}Mapper.selectBatchIds(ids);
+            result.getRecords().forEach({{ table.name | camel }} -> {
+                {{ table.name | camel }}.set{{ column.referenceTable.name | pascal }}({{ column.referenceTable.name | camel }}s.stream().filter(item -> item.getId() == {{ table.name | camel }}.get{{ column.name | pascal }}()).findFirst().orElse(null));
+            });
+        }
+{% endfor %}
+        return CommonResult.success(result);
+    }
+
+    @GetMapping("/enum/{{ table.name | lower }}")
+    @ApiOperation(value = "全量枚举")
+    public CommonResult<List<{{ table.name | pascal }}>> all(
+        @ApiParam("主键id") @RequestParam(required = false) Integer id,
+{% for column in table.columns %}
+        @ApiParam("{{ column.comment }}") @RequestParam(required = false) {{ column.javaType }} {{ column.name | camel }},
+{% endfor %}
+        @ApiParam("关联对象：{% for ftable in table.refTables%}{{ ftable.name | camel }}s{% if not loop.last %}, {% endif %}{% endfor %}") @RequestParam(required = false) List<String> with
+    ) {
+        LambdaQueryWrapper<{{ table.name | pascal }}> query = new LambdaQueryWrapper<{{ table.name | pascal }}>();
+        if (id != null) {
+            query.eq({{ table.name | pascal }}::getId, id);
+        }
+{% for column in table.columns %}
+        if ({{ column.name | camel }} != null) {
+            query.eq({{ table.name | pascal }}::get{{ column.name | pascal }}, {{ column.name | camel }});
+        }
+{% endfor %}
+        query.orderByDesc({{ table.name | pascal }}::getId);
+        List<{{ table.name | pascal }}> result = mapper.selectList(query);
+
+{% for column in table.foreignKeys %}
+        List<Integer> ids = result.stream().mapToInt(item -> item.get{{ column.name | pascal }}()).boxed().collect(Collectors.toList());
+        if(ids.size() > 0){
+            List<{{ column.referenceTable.name | pascal }}> {{ column.referenceTable.name | camel }}s = {{ column.referenceTable.name | camel }}Mapper.selectBatchIds(ids);
+            result.forEach({{ table.name | camel }} -> {
+                {{ table.name | camel }}.set{{ column.referenceTable.name | pascal }}({{ column.referenceTable.name | camel }}s.stream().filter(item -> item.getId() == {{ table.name | camel }}.get{{ column.name | pascal }}()).findFirst().orElse(null));
+            });
+        }
+{% endfor %}
+{% if table.refTables | length > 0 %}
+        if (with != null && with.size() > 0) {
+            List<Integer> {{ table.name | camel }}Ids = result.stream().mapToInt(item -> item.getId()).boxed().collect(Collectors.toList());
+            if ({{ table.name | camel }}Ids.size() > 0) {
+                for (String key : with) {
+                    switch (key) {
+{% for ftable in table.refTables%}
+                        case "{{ ftable.name | camel }}s":
+                            LambdaQueryWrapper<{{ ftable.name | pascal }}> {{ ftable.name | camel }}Query = new LambdaQueryWrapper<{{ ftable.name | pascal }}>();
+                            {{ ftable.name | camel }}Query.in({{ ftable.name | pascal }}::get{{ table.name | pascal }}Id, {{ table.name | camel }}Ids);
+                            List<{{ ftable.name | pascal }}> {{ ftable.name | camel }}s = {{ ftable.name | camel }}Mapper.selectList({{ ftable.name | camel }}Query);
+                            result.stream().forEach({{ table.name | camel }} -> {
+                                {{ table.name | camel }}.set{{ ftable.name | pascal }}s({{ ftable.name | camel }}s.stream().filter(item -> item.get{{ table.name | pascal }}Id() == {{ table.name | camel }}.getId()).collect(Collectors.toList()));
+                            });
+                            break;
+{% endfor %}
+                    }
+                }
+            }
+        }
+{% endif %}
+        return CommonResult.success(result);
+    }
+
+    @GetMapping(value = "/{{ table.name | lower }}/{id}")
+    @ApiOperation(value = "详情")
+    public CommonResult<{{ table.name | pascal }}> get(@ApiParam("id") @PathVariable("id") Integer id) {
+        return CommonResult.success(mapper.find(id));
+    }
+
+    @PostMapping("/{{ table.name | lower }}")
+    @ApiOperation(value = "创建")
+    public CommonResult<Integer> store(@ApiParam("{{ table.comment }}") @Validated({DefaultGroup.class, CreateGroup.class}) @RequestBody {{ table.name | pascal }} {{ table.name | camel }}) {
+        {{ table.name | camel }}.setCreatedBy(AuthUtils.getUserName());
+        mapper.insert({{ table.name | camel }});
+        return CommonResult.success({{ table.name | camel }}.getId());
+    }
+
+    @PutMapping(value = "/{{ table.name | lower }}/{ids}")
+    @ApiOperation(value = "更新")
+    public CommonResult<Integer> update(
+        @ApiParam("ids，多个id使用逗号隔开，示例：1,2,3,4") @PathVariable("ids") List<Integer> ids,
+        @ApiParam("{{ table.comment }}") @Validated({DefaultGroup.class}) @RequestBody  {{ table.name | pascal }} {{ table.name | camel }}
+    ) {
+        for (Integer id : ids) {
+            {{ table.name | camel }}.setId(id);
+            {{ table.name | camel }}.setUpdatedBy(AuthUtils.getUserName());
+            mapper.updateById({{ table.name | camel }});
+        }
+        return CommonResult.success();
+    }
+
+    @DeleteMapping(value = "/{{ table.name | lower }}/{id}")
+    @ApiOperation(value = "删除")
+    public CommonResult<Integer> destroy(@ApiParam("id") @PathVariable("id") Integer id) {
+{% for ftable in table.refTables%}
+        if({{ ftable.name | camel }}Mapper.selectCount(new LambdaQueryWrapper<{{ ftable.name | pascal }}>().eq({{ ftable.name | pascal }}::get{{ table.name | pascal }}Id, id)) > 0){
+            return CommonResult.failed("请先去{{ ftable.comment }}管理页面解除其他{{ ftable.comment }}与此{{ table.comment }}的从属关系");
+        }
+{% endfor %}
+        return CommonResult.success(mapper.deleteById(id));
+    }
+
+    @PostMapping(value = "/{{ table.name | lower }}/import")
+    @ApiOperation(value = "导入Excel")
+    public <T> CommonResult<T> excelImport(@RequestParam(value = "file") MultipartFile serviceFile) throws IOException {
+        InputStream in = serviceFile.getInputStream();
+        List<{{ table.name | pascal }}> list = new ArrayList<>();
+        try{
+            list = EasyExcel.read(in)
+                .head({{ table.name | pascal }}.class)
+                .sheet()
+                .registerConverter(new LocalDateTimeConverter())
+                .doReadSync();
+        } catch (com.alibaba.excel.exception.ExcelAnalysisException e) {
+            log.error("Excel导入异常", e);
+            String message = e.getMessage().split(":")[1].trim();
+            return CommonResult.failed("数据格式错误，请检查: " + message);
+        }
+        if(list.size() == 0 ){
+            return CommonResult.failed("导入失败，Excel数据为空");
+        }
+        for({{ table.name | pascal }} item: list){
+            Set<ConstraintViolation<{{ table.name | pascal }}>> violations = validator.validate(item, DefaultGroup.class, CreateGroup.class);
+            for (ConstraintViolation<{{ table.name | pascal }}> constraintViolation : violations) {
+                return CommonResult.failed(constraintViolation.getMessage());
+            }
+            mapper.insert(item);
+        }
+        return CommonResult.success();
+    }
+
+    @GetMapping(value = "/{{ table.name | lower }}/export")
+    @ApiOperation(value = "导出Excel")
+    public void export(HttpServletResponse response) throws IOException {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding("utf-8");
+        String fileName = URLEncoder.encode("{{ table.comment }}", "UTF-8").replaceAll("\\+", "%20");
+        response.setHeader("Content-disposition", "attachment;filename=" + fileName + ".xlsx");
+        response.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+
+        List<{{ table.name | pascal }}> data = mapper.selectList(new QueryWrapper<>());
+
+        EasyExcel.write(response.getOutputStream(), {{ table.name | pascal }}.class).sheet("{{ table.name | camel }}")
+            .registerConverter(new LocalDateTimeConverter())
+            .doWrite(data);
+    }
+
+    @GetMapping(value = "/{{ table.name | lower }}/export/template")
+    @ApiOperation(value = "下载Excel模板")
+    public void exportTemplate(HttpServletResponse response) throws IOException {
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding("utf-8");
+        String fileName = URLEncoder.encode("{{ table.comment }}模板", "UTF-8").replaceAll("\\+", "%20");
+        response.setHeader("Content-disposition", "attachment;filename=" + fileName + ".xlsx");
+        response.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
+
+        List<{{ table.name | pascal }}> data = new ArrayList<>();
+        {{ table.name | pascal }} {{ table.name | camel }} = new {{ table.name | pascal }}();
+{% for column in table.columns %}
+{% if column.export == true %}
+        {{ table.name | camel }}.set{{ column.name | pascal }}({{ column | default }});
+
+{% endif %}
+{% endfor %}
+        data.add({{ table.name | camel }});
+
+        EasyExcel.write(response.getOutputStream(), {{ table.name | pascal }}.class).sheet("{{ table.name | camel }}")
+            .registerConverter(new LocalDateTimeConverter())
+            .doWrite(data);
+    }
+}

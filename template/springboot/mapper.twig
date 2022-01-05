@@ -1,0 +1,13 @@
+package gm.game.mapper;
+
+import gm.game.entity.*;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.springframework.stereotype.Repository;
+
+@Mapper
+@Repository
+public interface {{ table.name | pascal }}Mapper extends BaseMapper<{{ table.name | pascal }}> {
+    {{ table.name | pascal }} find(@Param("id") int id);
+}

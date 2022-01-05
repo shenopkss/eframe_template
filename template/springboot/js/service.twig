@@ -1,0 +1,39 @@
+import request from '@/utils/request';
+
+export async function get(id) {
+  return request(`/api/{{table.name | underscore}}/${id}`);
+}
+export async function query(params) {
+  return request(`/api/{{table.name | underscore}}`, {
+      params
+  });
+}
+
+export async function create(params) {
+  return request(`/api/{{table.name | underscore}}`, {
+    method: 'POST',
+    data: params,
+  });
+}
+
+export async function update(ids, params) {
+  let id = ids
+  if (Array.isArray(ids)) {
+    id = ids.join(',')
+  }
+  return request(`/api/{{table.name | underscore}}/${id}`, {
+    method: 'PUT',
+    data: params,
+  });
+}
+
+export async function destory(ids) {
+  let id = ids
+  if (Array.isArray(ids)) {
+    id = ids.join(',')
+  }
+
+  return request(`/api/{{table.name | underscore}}/${id}`, {
+    method: 'delete'
+  });
+}

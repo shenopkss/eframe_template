@@ -1,0 +1,29 @@
+package com.kingnet.client.entity.Dto.game;
+
+import com.alibaba.fastjson.JSONArray;
+
+import java.util.List;
+import java.time.LocalDateTime;
+
+/**
+ * <p>
+ * {{ table.comment }}
+ * </p>
+ */
+public class {{ table.name | pascal  }} {
+
+    private Integer {{ table.primaryKey }};
+
+{% for column in table.columns %}
+    private {{ column.javaType }} {{ column.name | camel }};
+
+{% endfor %}
+{% for column in table.foreignKeys %}
+    private {{ column.referenceTable.name | pascal }} {{ column.referenceTable.name | camel }};
+
+{% endfor %}
+{% for ftable in table.refTables%}
+    private List<{{ ftable.name | pascal }}> {{ ftable.name | camel }}s;
+
+{% endfor %}
+}

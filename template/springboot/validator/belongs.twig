@@ -1,0 +1,56 @@
+package gm.game.validator;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import lombok.SneakyThrows;
+import org.springframework.beans.factory.annotation.Autowired;
+import javax.validation.ConstraintValidator;
+import javax.validation.ConstraintValidatorContext;
+{% for table in db.tables %}
+import gm.game.mapper.{{ table.name | pascal }}Mapper;
+{% endfor %}
+{% for table in db.tables %}
+import gm.game.entity.{{ table.name | pascal }};
+{% endfor %}
+
+public class BelongsToValidator implements ConstraintValidator<BelongsTo, Integer> {
+
+    private String table;
+
+{% for table in db.tables %}
+    @Autowired
+    private {{ table.name | pascal }}Mapper {{ table.name | camel }}Mapper;
+
+{% endfor %}
+
+    @Override
+    public void initialize(BelongsTo constraintAnnotation) {
+        table = constraintAnnotation.table();
+    }
+
+    @SneakyThrows
+    @Override
+    public boolean isValid(Integer value, ConstraintValidatorContext context) {
+        if (value == null) {
+            return true;
+        }
+        boolean result = false;
+        String message = "";
+        switch (table) {
+{% for table in db.tables %}
+            case "{{ table.name }}":
+                result = {{ table.name | camel }}Mapper.selectCount(new LambdaQueryWrapper<{{ table.name | pascal }}>().eq({{ table.name | pascal }}::getId, value)) > 0;
+                message = "不存在的{{ table.comment }}：" + value;
+                break;
+{% endfor %}
+            default:
+                throw new Exception("BelongsToValidator 验证失败，无效的表名：" + table);
+        }
+
+        //禁用默认的message的值
+        context.disableDefaultConstraintViolation();
+        //重新添加错误提示语句
+        context.buildConstraintViolationWithTemplate(message).addConstraintViolation();
+
+        return result;
+    }
+}

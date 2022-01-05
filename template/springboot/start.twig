@@ -1,0 +1,17 @@
+{#{% for table in db.tables %}#}
+{#    {% set data = {'table': table, 'db' : db} %}#}
+{#    {{ render('springboot/entity.twig', data, "#{db.name}/entity/#{table.name| pascal }.java") }}#}
+{#    {{ render('springboot/dto.twig', data, "#{db.name}/dto/#{table.name| pascal }.java") }}#}
+{#    {{ render('springboot/mapper.twig', data, "#{db.name}/mapper/#{table.name | pascal }Mapper.java") }}#}
+{#    {{ render('springboot/mapper_xml.twig', data, "#{db.name}/mapper_xml/#{table.name | pascal }.xml") }}#}
+{#    {{ render('springboot/controller.twig', data, "#{db.name}/controller/#{table.name | pascal }Controller.java") }}#}
+
+{#    {{ render('lumen/js/service.twig', {'table':table}, "#{db.name}/js/service/#{table.name | lower }.js")}}#}
+{#    {{ render('lumen/js/model.twig', {'table':table}, "#{db.name}/js/model/#{table.name | lower }.js")}}#}
+{#    {{ render('lumen/js/page/index.twig', {'table':table}, "#{db.name}/js/page/#{table.name | pascal }/index.jsx")}}#}
+{#    {{ render('lumen/js/page/create.twig', {'table':table}, "#{db.name}/js/page/#{table.name | pascal }/create.jsx")}}#}
+{#    {{ render('lumen/js/page/update.twig', {'table':table}, "#{db.name}/js/page/#{table.name | pascal }/update.jsx")}}#}
+
+{#{% endfor %}#}
+{#{{ render('springboot/permission.twig', {'db':db}, "#{db.name}/permission.sql")}}#}
+{#{{ render('springboot/validator/belongs.twig', {'db':db}, "#{db.name}/validator/BelongsToValidator.java")}}#}

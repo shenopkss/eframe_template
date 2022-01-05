@@ -12,7 +12,10 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 eframe = "0.15.0" # Gives us egui, epi and web+native backends
 toml = "0.5.8"
-
+#mysql = "*"
+chrono = "0.4"
+glob = "0.3.0"
+tera = "1.15.0"
 serde = { version = "1", features = ["derive"], optional = true }
 
 [features]

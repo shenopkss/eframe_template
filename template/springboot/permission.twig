@@ -1,0 +1,7 @@
+{% for table in db.tables %}
+insert into service_method(path, service_id, method, permission_id) value('/game/{{ table.name | lower }}', 4, 'GET',  5);
+insert into service_method(path, service_id, method, permission_id) value('/game/{{ table.name | lower }}/*', 4, 'GET',  5);
+insert into service_method(path, service_id, method, permission_id) value('/game/{{ table.name | lower }}', 4, 'POST',  6);
+insert into service_method(path, service_id, method, permission_id) value('/game/{{ table.name | lower }}/*', 4, 'PUT',  6);
+insert into service_method(path, service_id, method, permission_id) value('/game/{{ table.name | lower }}/*', 4, 'DELETE',  6);
+{% endfor %}
