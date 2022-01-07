@@ -4,13 +4,13 @@
 
     <!-- 通用查询映射结果 -->
     <resultMap id="{{ table.name | pascal }}ResultMap" type="gm.game.entity.{{ table.name | pascal }}">
-        <id column="{{ table.name }}_{{ table.primaryKey }}" property="{{ table.primaryKey }}"/>
+        <id column="{{ table.name }}_{{ table.primary_key }}" property="{{ table.primary_key }}"/>
 {% for column in table.columns %}
-        <result column="{{ table.name }}_{{ column.name }}" property="{{ column.name | camel }}" {% if column.javaType == 'JSONArray' %}typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"{% endif %} />
+        <result column="{{ table.name }}_{{ column.name }}" property="{{ column.name | camel }}" {% if column.java_type == 'JSONArray' %}typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"{% endif %} />
 {% endfor %}
 {% for column in table.foreignKeys %}
-        <association property="{{ column.referenceTable.name | camel }}" javaType="gm.game.entity.{{ column.referenceTable.name | pascal }}">
-            <id property="{{ column.referenceTable.primaryKey }}" column="{{ column.referenceTable.name }}_{{ column.referenceTable.primaryKey }}" />
+        <association property="{{ column.referenceTable.name | camel }}" java_type="gm.game.entity.{{ column.referenceTable.name | pascal }}">
+            <id property="{{ column.referenceTable.primary_key }}" column="{{ column.referenceTable.name }}_{{ column.referenceTable.primary_key }}" />
 {% for refcolumn in column.referenceTable.columns %}
             <result property="{{ refcolumn.name | camel }}" column="{{ column.referenceTable.name }}_{{ refcolumn.name }}" />
 {% endfor %}
@@ -19,7 +19,7 @@
     </resultMap>
 
     <sql id="{{ table.name | pascal }}Columns" >
-        {{ table.name }}.{{ table.primaryKey }} as {{ table.name }}_{{ table.primaryKey }},
+        {{ table.name }}.{{ table.primary_key }} as {{ table.name }}_{{ table.primary_key }},
         {% for column in table.columns %}{{ table.name }}.{{ column.name}} as {{ table.name }}_{{ column.name }}{% if not loop.last %},{% endif %}{% endfor %}
     </sql>
 
@@ -29,7 +29,7 @@
         <include refid="{{ table.name | pascal }}Columns" />{% if table.foreignKeys | length > 0 %},{% endif %}
 
 {% for column in table.foreignKeys %}
-        {{ column.referenceTable.name }}.{{ column.referenceTable.primaryKey }} as {{ column.referenceTable.name }}_{{ column.referenceTable.primaryKey }},
+        {{ column.referenceTable.name }}.{{ column.referenceTable.primary_key }} as {{ column.referenceTable.name }}_{{ column.referenceTable.primary_key }},
 {% for refcolumn in column.referenceTable.columns %}
         {{ column.referenceTable.name }}.{{ refcolumn.name }} as {{ column.referenceTable.name }}_{{ refcolumn.name }}{% if not loop.last %},{% endif %}
 
@@ -38,8 +38,8 @@
 
         from {{ table.name }}
 {% for column in table.foreignKeys %}
-        left join {{ column.referenceTable.name }} on {{ table.name }}.{{ column.name}} = {{ column.referenceTable.name }}.{{ column.referenceTable.primaryKey }}
+        left join {{ column.referenceTable.name }} on {{ table.name }}.{{ column.name}} = {{ column.referenceTable.name }}.{{ column.referenceTable.primary_key }}
 {% endfor %}
-        where {{ table.name }}.{{ table.primaryKey}} = #{id} limit 1
+        where {{ table.name }}.{{ table.primary_key}} = #{id} limit 1
     </select>
 </mapper>

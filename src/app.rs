@@ -2,7 +2,7 @@ use eframe::{egui, epi};
 use toml::Value;
 use std::fs;
 use std::sync::Arc;
-use crate::{Column, DataSource, Render, Table};
+use crate::{Column, DataSource, MyRender, Table};
 use glob::glob;
 use tera::{Function, Tera};
 use tera::Context;
@@ -19,30 +19,18 @@ pub struct TemplateApp {
     #[cfg_attr(feature = "persistence", serde(skip))]
     value: f32,
     #[cfg_attr(feature = "persistence", serde(skip))]
-    tera: Arc<Tera>,
+    render: MyRender,
     datasources: Vec<DataSource>,
 }
 
 impl Default for TemplateApp {
     fn default() -> Self {
-        let tera = match Tera::new("template/**/*.twig") {
-            Err(e) => {
-                println!("Parsing error(s): {}", e);
-                panic!("Parsing error")
-            }
-            Ok(mut t) => {
-                let mut t1 = Arc::new(t);
-                let mut render = Render::new();
-                t1.clone().register_function("render", render);
-                t1
-            }
-        };
         Self {
             // Example stuff:
             label: "Hello World!".to_owned(),
             value: 0.0,
             datasources: Vec::new(),
-            tera,
+            render: MyRender::new("/Users/shan/Projects/tools/eframe_template/template/**/*.twig"),
         }
     }
 }
@@ -66,8 +54,7 @@ impl epi::App for TemplateApp {
         //     *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default()
         // }
 
-        let Self { label, value, datasources, tera } = self;
-
+        let Self { label, value, datasources, render } = self;
 
         let paths = fs::read_dir("/Users/shan/Projects/tools/eframe_template/schema").unwrap();
         for path in paths {
@@ -99,7 +86,15 @@ impl epi::App for TemplateApp {
                             for c in columns {
                                 let mut column = Column::default();
                                 column.name = c["name"].as_str().unwrap().to_string();
-                                column.db_type = c["type"].as_str().unwrap().to_string();
+                                column.db_type = c["db_type"].as_str().unwrap().to_string();
+                                match column.db_type.as_str() {
+                                    "tinyint" | "smallint" | "mediumint" | "int" => {
+                                        column.java_type = String::from("Integer");
+                                    }
+                                    _ => {
+                                        return Err(format!("未知类型:{}",column.db_type));
+                                    }
+                                }
                                 if let Some(primary_key) = c.get("primary_key") {
                                     column.primary_key = primary_key.as_bool().unwrap();
                                     if column.primary_key {
@@ -143,7 +138,7 @@ impl epi::App for TemplateApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
-        let Self { label, value, datasources, tera } = self;
+        let Self { label, value, datasources, render } = self;
 
         // Examples of how to create different panels and windows.
         // Pick whichever suits you.
@@ -162,9 +157,9 @@ impl epi::App for TemplateApp {
                 if ui.button("Run").clicked() {
                     let mut context = Context::new();
                     context.insert("db", &datasources.get(0).unwrap());
-                    let content = tera.render("springboot/test.twig", &context);
+                    let content = render.generate("springboot/start.twig", &context);
                     match content {
-                        Ok(c) => println!("content {}", c),
+                        Ok(c) => println!("code generate:\n{}", c),
                         Err(e) => println!("{:?}", e),
                     }
                 }

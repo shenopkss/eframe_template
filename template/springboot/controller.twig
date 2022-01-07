@@ -70,7 +70,7 @@ public class {{ table.name | pascal }}Controller {
         @ApiParam(name = "每页条数", defaultValue = "20") @RequestParam(defaultValue = "20") Integer size,
         @ApiParam("主键id") @RequestParam(required = false) Integer id,
 {% for column in table.columns %}
-        @ApiParam("{{ column.comment }}") @RequestParam(required = false) {{ column.javaType }} {{ column.name | camel }}{% if not loop.last %},{% endif %}
+        @ApiParam("{{ column.comment }}") @RequestParam(required = false) {{ column.java_type }} {{ column.name | camel }}{% if not loop.last %},{% endif %}
 
 {% endfor %}
     ) {
@@ -122,7 +122,7 @@ public class {{ table.name | pascal }}Controller {
     public CommonResult<List<{{ table.name | pascal }}>> all(
         @ApiParam("主键id") @RequestParam(required = false) Integer id,
 {% for column in table.columns %}
-        @ApiParam("{{ column.comment }}") @RequestParam(required = false) {{ column.javaType }} {{ column.name | camel }},
+        @ApiParam("{{ column.comment }}") @RequestParam(required = false) {{ column.java_type }} {{ column.name | camel }},
 {% endfor %}
         @ApiParam("关联对象：{% for ftable in table.refTables%}{{ ftable.name | camel }}s{% if not loop.last %}, {% endif %}{% endfor %}") @RequestParam(required = false) List<String> with
     ) {

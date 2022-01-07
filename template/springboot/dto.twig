@@ -12,10 +12,10 @@ import java.time.LocalDateTime;
  */
 public class {{ table.name | pascal  }} {
 
-    private Integer {{ table.primaryKey }};
+    private Integer {{ table.primary_key }};
 
 {% for column in table.columns %}
-    private {{ column.javaType }} {{ column.name | camel }};
+    private {{ column.java_type }} {{ column.name | camel }};
 
 {% endfor %}
 {% for column in table.foreignKeys %}

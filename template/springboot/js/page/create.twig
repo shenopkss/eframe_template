@@ -105,7 +105,7 @@ const Create = props => {
           onValuesChange={onValuesChange}
         >
 {% for index,column in table.columns %}
-{% if column.name not in [table.primaryKey, 'created_at', 'updated_at', 'deleted_at']%}
+{% if column.name not in [table.primary_key, 'created_at', 'updated_at', 'deleted_at']%}
           <FormItem
             {...formItemLayout}
             label="{{column.comment}}"

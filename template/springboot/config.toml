@@ -1,9 +1,8 @@
-{% for table in db.tables %}
-{#    {% set data = {'table': table, 'db' : db} %}#}
-    {% set table_name = table.name | pascal %}
-    {{ table_name }}
-    {{ render(template="springboot/entity.twig", data=table, output="/Users/shan/Projects/tools/eframe_template/code/" ~ table_name ~ ".java") }}
+table = [ "springboot/entity.twig"]
+o
 
+{#{% for table in db.tables %}#}
+{#    {% set data = {'table': table, 'db' : db} %}#}
 {#    {{ render('springboot/entity.twig', data, "#{db.name}/entity/#{table.name| pascal }.java") }}#}
 {#    {{ render('springboot/dto.twig', data, "#{db.name}/dto/#{table.name| pascal }.java") }}#}
 {#    {{ render('springboot/mapper.twig', data, "#{db.name}/mapper/#{table.name | pascal }Mapper.java") }}#}
@@ -16,6 +15,6 @@
 {#    {{ render('lumen/js/page/create.twig', {'table':table}, "#{db.name}/js/page/#{table.name | pascal }/create.jsx")}}#}
 {#    {{ render('lumen/js/page/update.twig', {'table':table}, "#{db.name}/js/page/#{table.name | pascal }/update.jsx")}}#}
 
-{% endfor %}
+{#{% endfor %}#}
 {#{{ render('springboot/permission.twig', {'db':db}, "#{db.name}/permission.sql")}}#}
 {#{{ render('springboot/validator/belongs.twig', {'db':db}, "#{db.name}/validator/BelongsToValidator.java")}}#}

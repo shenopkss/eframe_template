@@ -1,3 +1,4 @@
+{% set table = data %}
 package gm.game.entity;
 
 import com.alibaba.fastjson.JSONArray;
@@ -45,8 +46,8 @@ public class {{ table.name | pascal  }} extends Model<{{ table.name | pascal }}>
 
     @ApiModelProperty(value = "主键id")
     @ExcelIgnore
-    @TableId(value = "{{ table.primaryKey }}", type = IdType.AUTO)
-    private Integer {{ table.primaryKey }};
+    @TableId(value = "{{ table.primary_key }}", type = IdType.AUTO)
+    private Integer {{ table.primary_key }};
 
 {% set excel_index = 0 %}
 {% for column in table.columns %}
@@ -71,7 +72,7 @@ public class {{ table.name | pascal  }} extends Model<{{ table.name | pascal }}>
 {% else %}
     @ExcelIgnore
 {% endif %}
-{% if column.javaType == 'JSONArray' or  'List' in column.javaType  %}
+{% if column.java_type == 'JSONArray' or  'List' in column.java_type  %}
     @TableField(value = "`{{ column.name }}`", typeHandler = FastjsonTypeHandler.class)
 {% else %}
     @TableField(value = "`{{ column.name }}`")
@@ -81,7 +82,7 @@ public class {{ table.name | pascal  }} extends Model<{{ table.name | pascal }}>
     @BelongsTo(table = "{{ column.referenceTable.name}}", groups = {DefaultGroup.class})
 {% endif %}
 {% endfor %}
-    private {{ column.javaType | raw }} {{ column.name | camel }};
+    private {{ column.java_type | raw }} {{ column.name | camel }};
 
 {% endfor %}
 {% for column in table.foreignKeys %}
@@ -100,6 +101,6 @@ public class {{ table.name | pascal  }} extends Model<{{ table.name | pascal }}>
 {% endfor %}
     @Override
     public Serializable pkVal() {
-        return this.{{ table.primaryKey }};
+        return this.{{ table.primary_key }};
     }
 }

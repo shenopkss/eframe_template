@@ -5,7 +5,7 @@ comment = "游戏公告"
 [[column]]
 name = "id"
 primary_key = true
-type = "int"
+db_type = "int"
 length = 11
 unsigned = true
 not_null = true
@@ -14,44 +14,44 @@ comment = "主键ID"
 
 [[column]]
 name = "title"
-type = "varchar"
+db_type = "varchar"
 length = 200
 not_null = true
 comment = "标题"
 
 [[column]]
 name = "content"
-type = "varchar"
+db_type = "varchar"
 length = 8000
 not_null = true
 comment = "内容"
 
 [[column]]
 name = "targets"
-type = "json"
+db_type = "json"
 not_null = true
 comment = "平台渠道范围"
-java_type = "List<gm.business.entity.req.PlatformTarget>"
+java_db_type = "List<gm.business.entity.req.PlatformTarget>"
 
 [[column]]
 name = "begintime"
-type = "datetime"
+db_type = "datetime"
 not_null = true
 
 [[column]]
 name = "endtime"
-type = "datetime"
+db_type = "datetime"
 not_null = true
 
 [[column]]
 name = "weight"
-type = "int"
+db_type = "int"
 not_null = true
 default = 0
 
 [[column]]
 name = "is_new"
-type = "int"
+db_type = "int"
 not_null = true
 comment = "是否新项"
 default = 0
@@ -59,14 +59,14 @@ set = [[0, 1], ["否", "是"]]
 
 [[column]]
 name = "duration"
-type = "int"
+db_type = "int"
 not_null = true
 comment = "间隔时间，单位：分钟"
 default = 0
 
 [[column]]
 name = "state"
-type = "int"
+db_type = "int"
 not_null = true
 comment = "在线状态"
 default = 0
@@ -74,28 +74,28 @@ set = [[0, 1, 2], ["待上线", "在线中", "已下线"]]
 
 [[column]]
 name = "cretaed_by"
-type = "varchar"
+db_type = "varchar"
 length = 45
 not_null = true
 comment = "创建人"
 
 [[column]]
 name = "updated_by"
-type = "varchar"
+db_type = "varchar"
 length = 45
 not_null = true
 comment = "最后编辑人"
 
 [[column]]
 name = "created_at"
-type = "datetime"
+db_type = "datetime"
 not_null = true
 comment = "创建时间"
 default = "CURRENT_TIMESTAMP"
 
 [[column]]
 name = "updated_at"
-type = "datetime"
+db_type = "datetime"
 not_null = true
 comment = "最后更新时间"
 default = "CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP"

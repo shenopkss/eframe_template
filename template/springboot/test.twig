@@ -1,3 +1,3 @@
 {% for table in db.tables %}
-    {{ render('springboot/test2.twig', {'table':table}, "#{db.name}/js/page/#{table.name | pascal }/update.jsx")}}
+    {{ render(template="springboot/test2.twig", data=table, output="/Users/shan/Projects/tools/eframe_template/code/" ~ table.name ~ ".java") }}
 {% endfor %}
