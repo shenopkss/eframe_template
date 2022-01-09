@@ -1,3 +1,4 @@
+{% set table = data -%}
 package gm.game.controller;
 
 import java.io.*;
@@ -53,67 +54,62 @@ public class {{ table.name | pascal }}Controller {
     @Autowired
     private {{ table.name | pascal }}Mapper mapper;
 
-{% for column in table.foreignKeys %}
+{% for column in table.foreign_keys -%}
     @Autowired
-    private {{ column.referenceTable.name | pascal }}Mapper {{ column.referenceTable.name | camel }}Mapper;
+    private {{ column.ref_table.name | pascal }}Mapper {{ column.ref_table.name | camel }}Mapper;
 
-{% endfor %}
-{% for ftable in table.refTables%}
+{% endfor -%}
+{% for ftable in table.ref_tables-%}
     @Autowired
     private {{ ftable.name | pascal }}Mapper {{ ftable.name | camel }}Mapper;
 
-{% endfor %}
+{% endfor -%}
     @GetMapping("/{{ table.name | lower }}")
     @ApiOperation(value = "分页查询")
     public CommonResult<Page<{{ table.name | pascal }}>> query(
         @ApiParam(name = "当前页", defaultValue = "1") @RequestParam(defaultValue = "1") Integer current,
         @ApiParam(name = "每页条数", defaultValue = "20") @RequestParam(defaultValue = "20") Integer size,
-        @ApiParam("主键id") @RequestParam(required = false) Integer id,
-{% for column in table.columns %}
-        @ApiParam("{{ column.comment }}") @RequestParam(required = false) {{ column.java_type }} {{ column.name | camel }}{% if not loop.last %},{% endif %}
-
-{% endfor %}
+        {% for column in table.columns -%}
+            @ApiParam("{{ column.comment }}") @RequestParam(required = false) {{ column.java_type }} {{ column.name | camel }}{% if not loop.last %},{% endif %}
+        {% endfor -%}
     ) {
         LambdaQueryWrapper<{{ table.name | pascal }}> query = new LambdaQueryWrapper<{{ table.name | pascal }}>();
-        if (id != null) {
-            query.eq({{ table.name | pascal }}::getId, id);
-        }
-{% for column in table.columns %}
-        if ({{ column.name | camel }} != null) {
-{% if column.type == 'string' %}
-            query.like({{ table.name | pascal }}::get{{ column.name | pascal }}, {{ column.name | camel }});
-{% elif column.type == 'json' %}
-            query.and(new Consumer<LambdaQueryWrapper<{{ table.name | pascal }}>>() {
-                @Override
-			    public void accept(LambdaQueryWrapper<{{ table.name | pascal }}> queryWrapper) {
-		            for (int i = 0; i <=    {{ column.name | camel }}.size() - 1; i++) {
-                        String jsonStrsqlStatement = String.format("JSON_CONTAINS(`{{column.name}}`, '%s')", {{ column.name | camel }}.get(i));
-                        queryWrapper.apply(jsonStrsqlStatement);
+        {% for column in table.columns -%}
+            if ({{ column.name | camel }} != null) {
+            {% if column.db_type == 'string' -%}
+                query.like({{ table.name | pascal }}::get{{ column.name | pascal }}, {{ column.name | camel }});
+            {% elif column.db_type == 'json' -%}
+                query.and(new Consumer<LambdaQueryWrapper<{{ table.name | pascal }}>>() {
+                    @Override
+                    public void accept(LambdaQueryWrapper<{{ table.name | pascal }}> queryWrapper) {
+                        for (int i = 0; i <=    {{ column.name | camel }}.size() - 1; i++) {
+                            String jsonStrsqlStatement = String.format("JSON_CONTAINS(`{{column.name}}`, '%s')", {{ column.name | camel }}.get(i));
+                            queryWrapper.apply(jsonStrsqlStatement);
 
-                        String idSqlStatement = String.format("JSON_CONTAINS(JSON_EXTRACT(`{{column.name}}`, '$[*].id'), '%s')", {{ column.name | camel }}.get(i));
-                        queryWrapper.or().apply(idSqlStatement);
-                    }
-                  }
-               });
-{% else %}
-            query.eq({{ table.name | pascal }}::get{{ column.name | pascal }}, {{ column.name | camel }});
-{% endif %}
-        }
-{% endfor %}
+                            String idSqlStatement = String.format("JSON_CONTAINS(JSON_EXTRACT(`{{column.name}}`, '$[*].id'), '%s')", {{ column.name | camel }}.get(i));
+                            queryWrapper.or().apply(idSqlStatement);
+                        }
+                      }
+                   });
+            {% else -%}
+                query.eq({{ table.name | pascal }}::get{{ column.name | pascal }}, {{ column.name | camel }});
+            {% endif -%}
+            }
+        {% endfor -%}
         query.orderByDesc({{ table.name | pascal }}::getId);
 
         Page<{{ table.name | pascal }}> page = new Page<{{ table.name | pascal }}>(current, size);
         Page<{{ table.name | pascal }}> result = mapper.selectPage(page, query);
 
-{% for column in table.foreignKeys %}
+        {% for column in table.foreign_keys -%}
         List<Integer> ids = result.getRecords().stream().mapToInt(item -> item.get{{ column.name | pascal }}()).boxed().collect(Collectors.toList());
         if(ids.size() > 0){
-            List<{{ column.referenceTable.name | pascal }}> {{ column.referenceTable.name | camel }}s = {{ column.referenceTable.name | camel }}Mapper.selectBatchIds(ids);
+            List<{{ column.ref_table.name | pascal }}> {{ column.ref_table.name | camel }}s = {{ column.ref_table.name | camel }}Mapper.selectBatchIds(ids);
             result.getRecords().forEach({{ table.name | camel }} -> {
-                {{ table.name | camel }}.set{{ column.referenceTable.name | pascal }}({{ column.referenceTable.name | camel }}s.stream().filter(item -> item.getId() == {{ table.name | camel }}.get{{ column.name | pascal }}()).findFirst().orElse(null));
+                {{ table.name | camel }}.set{{ column.ref_table.name | pascal }}({{ column.ref_table.name | camel }}s.stream().filter(item -> item.getId() == {{ table.name | camel }}.get{{ column.name | pascal }}()).findFirst().orElse(null));
             });
         }
-{% endfor %}
+        {% endfor -%}
         return CommonResult.success(result);
     }
 
@@ -121,39 +117,39 @@ public class {{ table.name | pascal }}Controller {
     @ApiOperation(value = "全量枚举")
     public CommonResult<List<{{ table.name | pascal }}>> all(
         @ApiParam("主键id") @RequestParam(required = false) Integer id,
-{% for column in table.columns %}
+{% for column in table.columns -%}
         @ApiParam("{{ column.comment }}") @RequestParam(required = false) {{ column.java_type }} {{ column.name | camel }},
-{% endfor %}
-        @ApiParam("关联对象：{% for ftable in table.refTables%}{{ ftable.name | camel }}s{% if not loop.last %}, {% endif %}{% endfor %}") @RequestParam(required = false) List<String> with
+{% endfor -%}
+        @ApiParam("关联对象：{% for ftable in table.ref_tables%}{{ ftable.name | camel }}s{% if not loop.last %}, {% endif %}{% endfor %}") @RequestParam(required = false) List<String> with
     ) {
         LambdaQueryWrapper<{{ table.name | pascal }}> query = new LambdaQueryWrapper<{{ table.name | pascal }}>();
         if (id != null) {
             query.eq({{ table.name | pascal }}::getId, id);
         }
-{% for column in table.columns %}
+{% for column in table.columns -%}
         if ({{ column.name | camel }} != null) {
             query.eq({{ table.name | pascal }}::get{{ column.name | pascal }}, {{ column.name | camel }});
         }
-{% endfor %}
+{% endfor -%}
         query.orderByDesc({{ table.name | pascal }}::getId);
         List<{{ table.name | pascal }}> result = mapper.selectList(query);
 
-{% for column in table.foreignKeys %}
+{% for column in table.foreign_keys -%}
         List<Integer> ids = result.stream().mapToInt(item -> item.get{{ column.name | pascal }}()).boxed().collect(Collectors.toList());
         if(ids.size() > 0){
-            List<{{ column.referenceTable.name | pascal }}> {{ column.referenceTable.name | camel }}s = {{ column.referenceTable.name | camel }}Mapper.selectBatchIds(ids);
+            List<{{ column.ref_table.name | pascal }}> {{ column.ref_table.name | camel }}s = {{ column.ref_table.name | camel }}Mapper.selectBatchIds(ids);
             result.forEach({{ table.name | camel }} -> {
-                {{ table.name | camel }}.set{{ column.referenceTable.name | pascal }}({{ column.referenceTable.name | camel }}s.stream().filter(item -> item.getId() == {{ table.name | camel }}.get{{ column.name | pascal }}()).findFirst().orElse(null));
+                {{ table.name | camel }}.set{{ column.ref_table.name | pascal }}({{ column.ref_table.name | camel }}s.stream().filter(item -> item.getId() == {{ table.name | camel }}.get{{ column.name | pascal }}()).findFirst().orElse(null));
             });
         }
-{% endfor %}
-{% if table.refTables | length > 0 %}
+{% endfor -%}
+{% if table.ref_tables | length > 0 -%}
         if (with != null && with.size() > 0) {
             List<Integer> {{ table.name | camel }}Ids = result.stream().mapToInt(item -> item.getId()).boxed().collect(Collectors.toList());
             if ({{ table.name | camel }}Ids.size() > 0) {
                 for (String key : with) {
                     switch (key) {
-{% for ftable in table.refTables%}
+{% for ftable in table.ref_tables-%}
                         case "{{ ftable.name | camel }}s":
                             LambdaQueryWrapper<{{ ftable.name | pascal }}> {{ ftable.name | camel }}Query = new LambdaQueryWrapper<{{ ftable.name | pascal }}>();
                             {{ ftable.name | camel }}Query.in({{ ftable.name | pascal }}::get{{ table.name | pascal }}Id, {{ table.name | camel }}Ids);
@@ -162,12 +158,12 @@ public class {{ table.name | pascal }}Controller {
                                 {{ table.name | camel }}.set{{ ftable.name | pascal }}s({{ ftable.name | camel }}s.stream().filter(item -> item.get{{ table.name | pascal }}Id() == {{ table.name | camel }}.getId()).collect(Collectors.toList()));
                             });
                             break;
-{% endfor %}
+{% endfor -%}
                     }
                 }
             }
         }
-{% endif %}
+{% endif -%}
         return CommonResult.success(result);
     }
 
@@ -202,11 +198,11 @@ public class {{ table.name | pascal }}Controller {
     @DeleteMapping(value = "/{{ table.name | lower }}/{id}")
     @ApiOperation(value = "删除")
     public CommonResult<Integer> destroy(@ApiParam("id") @PathVariable("id") Integer id) {
-{% for ftable in table.refTables%}
+{% for ftable in table.ref_tables-%}
         if({{ ftable.name | camel }}Mapper.selectCount(new LambdaQueryWrapper<{{ ftable.name | pascal }}>().eq({{ ftable.name | pascal }}::get{{ table.name | pascal }}Id, id)) > 0){
             return CommonResult.failed("请先去{{ ftable.comment }}管理页面解除其他{{ ftable.comment }}与此{{ table.comment }}的从属关系");
         }
-{% endfor %}
+{% endfor -%}
         return CommonResult.success(mapper.deleteById(id));
     }
 
@@ -266,12 +262,12 @@ public class {{ table.name | pascal }}Controller {
 
         List<{{ table.name | pascal }}> data = new ArrayList<>();
         {{ table.name | pascal }} {{ table.name | camel }} = new {{ table.name | pascal }}();
-{% for column in table.columns %}
-{% if column.export == true %}
+{% for column in table.columns -%}
+{% if column.export == true -%}
         {{ table.name | camel }}.set{{ column.name | pascal }}({{ column | default }});
 
-{% endif %}
-{% endfor %}
+{% endif -%}
+{% endfor -%}
         data.add({{ table.name | camel }});
 
         EasyExcel.write(response.getOutputStream(), {{ table.name | pascal }}.class).sheet("{{ table.name | camel }}")

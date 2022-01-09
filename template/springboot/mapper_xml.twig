@@ -1,3 +1,4 @@
+{% set table = data -%}
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="gm.game.mapper.{{ table.name | pascal }}Mapper">
@@ -8,11 +9,11 @@
 {% for column in table.columns %}
         <result column="{{ table.name }}_{{ column.name }}" property="{{ column.name | camel }}" {% if column.java_type == 'JSONArray' %}typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"{% endif %} />
 {% endfor %}
-{% for column in table.foreignKeys %}
-        <association property="{{ column.referenceTable.name | camel }}" java_type="gm.game.entity.{{ column.referenceTable.name | pascal }}">
-            <id property="{{ column.referenceTable.primary_key }}" column="{{ column.referenceTable.name }}_{{ column.referenceTable.primary_key }}" />
-{% for refcolumn in column.referenceTable.columns %}
-            <result property="{{ refcolumn.name | camel }}" column="{{ column.referenceTable.name }}_{{ refcolumn.name }}" />
+{% for column in table.foreign_keys %}
+        <association property="{{ column.ref_table.name | camel }}" java_type="gm.game.entity.{{ column.ref_table.name | pascal }}">
+            <id property="{{ column.ref_table.primary_key }}" column="{{ column.ref_table.name }}_{{ column.ref_table.primary_key }}" />
+{% for refcolumn in column.ref_table.columns %}
+            <result property="{{ refcolumn.name | camel }}" column="{{ column.ref_table.name }}_{{ refcolumn.name }}" />
 {% endfor %}
         </association>
 {% endfor %}
@@ -26,19 +27,19 @@
 
     <select id="find" parameterType="int" resultMap="{{ table.name | pascal }}ResultMap">
         select
-        <include refid="{{ table.name | pascal }}Columns" />{% if table.foreignKeys | length > 0 %},{% endif %}
+        <include refid="{{ table.name | pascal }}Columns" />{% if table.foreign_keys | length > 0 %},{% endif %}
 
-{% for column in table.foreignKeys %}
-        {{ column.referenceTable.name }}.{{ column.referenceTable.primary_key }} as {{ column.referenceTable.name }}_{{ column.referenceTable.primary_key }},
-{% for refcolumn in column.referenceTable.columns %}
-        {{ column.referenceTable.name }}.{{ refcolumn.name }} as {{ column.referenceTable.name }}_{{ refcolumn.name }}{% if not loop.last %},{% endif %}
+{% for column in table.foreign_keys %}
+        {{ column.ref_table.name }}.{{ column.ref_table.primary_key }} as {{ column.ref_table.name }}_{{ column.ref_table.primary_key }},
+{% for refcolumn in column.ref_table.columns %}
+        {{ column.ref_table.name }}.{{ refcolumn.name }} as {{ column.ref_table.name }}_{{ refcolumn.name }}{% if not loop.last %},{% endif %}
 
 {% endfor %}
 {% endfor %}
 
         from {{ table.name }}
-{% for column in table.foreignKeys %}
-        left join {{ column.referenceTable.name }} on {{ table.name }}.{{ column.name}} = {{ column.referenceTable.name }}.{{ column.referenceTable.primary_key }}
+{% for column in table.foreign_keys %}
+        left join {{ column.ref_table.name }} on {{ table.name }}.{{ column.name}} = {{ column.ref_table.name }}.{{ column.ref_table.primary_key }}
 {% endfor %}
         where {{ table.name }}.{{ table.primary_key}} = #{id} limit 1
     </select>

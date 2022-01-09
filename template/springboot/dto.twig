@@ -18,11 +18,11 @@ public class {{ table.name | pascal  }} {
     private {{ column.java_type }} {{ column.name | camel }};
 
 {% endfor %}
-{% for column in table.foreignKeys %}
-    private {{ column.referenceTable.name | pascal }} {{ column.referenceTable.name | camel }};
+{% for column in table.foreign_keys %}
+    private {{ column.ref_table.name | pascal }} {{ column.ref_table.name | camel }};
 
 {% endfor %}
-{% for ftable in table.refTables%}
+{% for ftable in table.ref_tables%}
     private List<{{ ftable.name | pascal }}> {{ ftable.name | camel }}s;
 
 {% endfor %}

@@ -91,8 +91,26 @@ impl epi::App for TemplateApp {
                                     "tinyint" | "smallint" | "mediumint" | "int" => {
                                         column.java_type = String::from("Integer");
                                     }
+                                    "bigint" => {
+                                        column.java_type = String::from("Long");
+                                    }
+                                    "float" => {
+                                        column.java_type = String::from("Float");
+                                    }
+                                    "double" => {
+                                        column.java_type = String::from("Double");
+                                    }
+                                    "decimal" => {
+                                        column.java_type = String::from("java.math.BigDecimal");
+                                    }
+                                    "json" => {
+                                        column.java_type = String::from("JSONArray");
+                                    }
+                                    "date" | "datetime" | "timestamp" => {
+                                        column.java_type = String::from("LocalDateTime");
+                                    }
                                     _ => {
-                                        return Err(format!("未知类型:{}",column.db_type));
+                                        column.java_type = String::from("String");
                                     }
                                 }
                                 if let Some(primary_key) = c.get("primary_key") {
@@ -110,11 +128,28 @@ impl epi::App for TemplateApp {
                                 if let Some(auto_increment) = c.get("auto_increment") {
                                     column.auto_increment = auto_increment.as_bool().unwrap();
                                 }
+                                if let Some(export) = c.get("export") {
+                                    column.export = export.as_bool().unwrap();
+                                }
+                                if let Some(set) = c.get("set") {
+                                    let set = set.as_array().unwrap();
+                                    let keys = set.get(0).unwrap().as_array().unwrap();
+                                    let values = set.get(1).unwrap().as_array().unwrap();
+                                    for i in 0..keys.len() {
+                                        column.set.insert(keys.get(i).unwrap().as_integer().unwrap(), values.get(i).unwrap().as_str().unwrap().to_string());
+                                    }
+                                }
                                 if let Some(comment) = c.get("comment") {
                                     column.comment = comment.as_str().unwrap().to_string();
                                 }
                                 if let Some(java_type) = c.get("java_type") {
                                     column.java_type = java_type.as_str().unwrap().to_string();
+                                }
+
+                                if let Some(ref_table) = c.get("ref_table") {
+                                    if let Some(ref_table) = ds.tables.iter().find(|&item| { item.name == column.name }) {
+                                        column.ref_table = ref_table.clone();
+                                    }
                                 }
                                 table.columns.push(column);
                             }
@@ -123,9 +158,20 @@ impl epi::App for TemplateApp {
                         Err(e) => println!("{:?}", e),
                     }
                 }
+
                 datasources.push(ds);
             }
         }
+
+        //TODO 测试
+        let mut context = Context::new();
+        context.insert("db", &datasources.get(0).unwrap());
+        let content = render.generate("springboot/start.twig", &context);
+        match content {
+            Ok(c) => println!("code generate:\n{}", c),
+            Err(e) => println!("{:?}", e),
+        }
+        //TODO 测试 end
     }
 
     /// Called by the frame work to save state before shutdown.

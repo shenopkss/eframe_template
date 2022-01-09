@@ -59,6 +59,7 @@ pub struct Table {
     primary_key: String,
     foreign_keys: Vec<Column>,
     no_foreign_keys: Vec<Column>,
+    ref_tables: Vec<Table>,
     columns: Vec<Column>,
 }
 
@@ -67,7 +68,7 @@ pub struct Column {
     name: String,
     comment: String,
     table: Table,
-    reference_table: Table,
+    ref_table: Table,
     not_null: bool,
     unique: bool,
     auto_increment: bool,
@@ -76,7 +77,8 @@ pub struct Column {
     java_type: String,
     length: u32,
     export: bool,
-    set: HashMap<String, String>,
+    set: HashMap<i64, String>,
+    has_many: String
 }
 
 

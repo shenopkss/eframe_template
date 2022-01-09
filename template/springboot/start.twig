@@ -3,12 +3,10 @@
     {% set table_name = table.name | pascal %}
     {{ table_name }}
     {{ render(template="springboot/entity.twig", data=table, output="/Users/shan/Projects/tools/eframe_template/code/" ~ table_name ~ ".java") }}
+    {{ render(template="springboot/controller.twig", data=table, output="/Users/shan/Projects/tools/eframe_template/code/" ~ table_name ~ "Controller.java") }}
 
-{#    {{ render('springboot/entity.twig', data, "#{db.name}/entity/#{table.name| pascal }.java") }}#}
-{#    {{ render('springboot/dto.twig', data, "#{db.name}/dto/#{table.name| pascal }.java") }}#}
-{#    {{ render('springboot/mapper.twig', data, "#{db.name}/mapper/#{table.name | pascal }Mapper.java") }}#}
+    {#    {{ render('springboot/mapper.twig', data, "#{db.name}/mapper/#{table.name | pascal }Mapper.java") }}#}
 {#    {{ render('springboot/mapper_xml.twig', data, "#{db.name}/mapper_xml/#{table.name | pascal }.xml") }}#}
-{#    {{ render('springboot/controller.twig', data, "#{db.name}/controller/#{table.name | pascal }Controller.java") }}#}
 
 {#    {{ render('lumen/js/service.twig', {'table':table}, "#{db.name}/js/service/#{table.name | lower }.js")}}#}
 {#    {{ render('lumen/js/model.twig', {'table':table}, "#{db.name}/js/model/#{table.name | lower }.js")}}#}

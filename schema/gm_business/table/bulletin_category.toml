@@ -1,0 +1,45 @@
+[table]
+name = "bulletin_category"
+comment = "游戏公告类型"
+ref_tables = ["bulletin"]
+
+[[column]]
+name = "id"
+primary_key = true
+db_type = "int"
+length = 11
+unsigned = true
+not_null = true
+auto_increment = true
+comment = "主键ID"
+
+[[column]]
+name = "name"
+db_type = "varchar"
+length = 200
+not_null = true
+comment = "名称"
+
+[[column]]
+name = "created_by"
+db_type = "varchar"
+length = 45
+comment = "创建人"
+
+[[column]]
+name = "updated_by"
+db_type = "varchar"
+length = 45
+comment = "最后编辑人"
+
+[[column]]
+name = "created_at"
+db_type = "datetime"
+comment = "创建时间"
+default = "CURRENT_TIMESTAMP"
+
+[[column]]
+name = "updated_at"
+db_type = "datetime"
+comment = "最后更新时间"
+default = "CURRENT_TIMESTAMP on update CURRENT_TIMESTAMP"

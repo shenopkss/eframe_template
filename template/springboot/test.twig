@@ -1,3 +1,4 @@
-{% for table in db.tables %}
-    {{ render(template="springboot/test2.twig", data=table, output="/Users/shan/Projects/tools/eframe_template/code/" ~ table.name ~ ".java") }}
+{% set table = data %}
+{% for column in table.columns %}
+{{ column.db_type }}
 {% endfor %}

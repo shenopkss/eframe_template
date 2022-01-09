@@ -1,4 +1,4 @@
-{% set table = data %}
+{% set table = data -%}
 package gm.game.entity;
 
 import com.alibaba.fastjson.JSONArray;
@@ -31,74 +31,70 @@ import gm.game.validator.DefaultGroup;
 import gm.game.validator.CreateGroup;
 
 /**
- * <p>
- * {{ table.comment }}
- * </p>
- */
+    * <p>
+    * {{ table.comment }}
+    * </p>
+*/
 @Data
 @TableName(autoResultMap = true)
 @EqualsAndHashCode(callSuper = false)
 @ApiModel(value = "{{ table.name }}", description = "{{ table.comment }}")
 @ColumnWidth(20) //Excel默认列宽度
-public class {{ table.name | pascal  }} extends Model<{{ table.name | pascal }}> {
+public class {{ table.name | pascal }} extends Model<{{ table.name | pascal }}> {
 
-    private static final long serialVersionUID = 1L;
+{% set excel_index = 0 -%}
+    {% for column in table.columns -%}
+        {% if column.primary_key -%}
+            @TableId(value = "{{ table.primary_key }}", type = IdType.AUTO)
+        {% endif -%}
+        @ApiModelProperty(value = "{{ column.comment }}{% if column.set %}（{% for key,value in column.set %}{{ key }}: {{ value }} {% endfor %}）{% endif %}")
+        {% if column.not_null -%}
+            {% if column.java_type == 'String' -%}
+                @NotEmpty(message = "`{{ column.comment }}`不能为空！", groups = {CreateGroup.class})
+                @Length(max={{ column.length }}, message = "`{{ column.comment }}`长度不能超过{{ column.length }}个字！", groups = {DefaultGroup.class})
+            {% elif column.primary_key == false -%}
+                @NotNull(message = "`{{ column.comment }}`不能为空！", groups = {CreateGroup.class})
+            {% endif -%}
+        {% endif -%}
+        {% if column.range -%}
+            @Range(min = {{ column.range[0] }}, max={{ column.range[1] }}, message = "`{{ column.comment }}`无效，不在可选范围", groups = {DefaultGroup.class})
+        {% endif -%}
+        {% if column.set -%}
+            @Set(targets = { {% for key,value in column.set %}{{ key }}{% if not loop.last %}, {% endif %}{% endfor %} }, message = "无效的`{{ column.comment }}`：%d`", groups = {DefaultGroup.class})
+        {% endif -%}
+        {% if column.export -%}
+            @ExcelProperty(value = "{% if column.not_null %}*{% endif %}{{ column.comment }}{% if column.set %}（{% for key,value in column.set %}{{ key }}: {{ value }} {% endfor %}）{% endif %}", index = {{ excel_index }})
+            {% set excel_index = excel_index + 1 -%}
+        {% else -%}
+            @ExcelIgnore
+        {% endif -%}
+        {% if column.db_type == 'json' -%}
+            @TableField(value = "`{{ column.name }}`", typeHandler = FastjsonTypeHandler.class)
+        {% else -%}
+            @TableField(value = "`{{ column.name }}`")
+        {% endif -%}
+        {% for fk in table.foreign_keys -%}
+            {% if column.name == fk.name -%}
+                @BelongsTo(table = "{{ column.ref_table.name }}", groups = {DefaultGroup.class})
+            {% endif -%}
+        {% endfor -%}
+        private {{ column.java_type }} {{ column.name | camel }};
 
-    @ApiModelProperty(value = "主键id")
-    @ExcelIgnore
-    @TableId(value = "{{ table.primary_key }}", type = IdType.AUTO)
-    private Integer {{ table.primary_key }};
+    {% endfor -%}
+    {% for column in table.foreign_keys -%}
+        @ApiModelProperty(value = "{{ column.ref_table.name | pascal }}")
+        @ExcelIgnore
+        @TableField(exist = false)
+        private {{ column.ref_table.name | pascal }} {{ column.ref_table.name | camel }};
 
-{% set excel_index = 0 %}
-{% for column in table.columns %}
-    @ApiModelProperty(value = "{{  column.comment }}{% if column.set %}（{% for key,value in column.set %}{{ key }}: {{ value }} {% endfor %}）{% endif %}")
-{% if column.not_null %}
-{% if column.type == 'string' %}
-    @NotEmpty(message = "`{{  column.comment }}`不能为空！", groups = {CreateGroup.class})
-    @Length(max={{  column.length }}, message = "`{{  column.comment }}`长度不能超过{{  column.length }}个字！", groups = {DefaultGroup.class})
-{% else %}
-    @NotNull(message = "`{{  column.comment }}`不能为空！", groups = {CreateGroup.class})
-{% endif %}
-{% endif %}
-{% if column.range %}
-    @Range(min = {{ column.range[0] }}, max={{ column.range[1] }}, message = "`{{  column.comment }}`无效，不在可选范围", groups = {DefaultGroup.class})
-{% endif %}
-{% if column.set %}
-    @Set(targets = { {% for key,value in column.set %}{{ key }}{% if not loop.last %}, {% endif %}{% endfor %} }, message = "无效的`{{  column.comment }}`：%d`", groups = {DefaultGroup.class})
-{% endif %}
-{% if column.export == true %}
-    @ExcelProperty(value = "{% if column.not_null %}*{% endif %}{{ column.comment }}{% if column.set %}（{% for key,value in column.set %}{{ key }}: {{ value }} {% endfor %}）{% endif %}", index = {{ excel_index }})
-{% set excel_index = excel_index + 1 %}
-{% else %}
-    @ExcelIgnore
-{% endif %}
-{% if column.java_type == 'JSONArray' or  'List' in column.java_type  %}
-    @TableField(value = "`{{ column.name }}`", typeHandler = FastjsonTypeHandler.class)
-{% else %}
-    @TableField(value = "`{{ column.name }}`")
-{% endif %}
-{% for fk in table.foreignKeys %}
-{% if column.name == fk.name  %}
-    @BelongsTo(table = "{{ column.referenceTable.name}}", groups = {DefaultGroup.class})
-{% endif %}
-{% endfor %}
-    private {{ column.java_type | raw }} {{ column.name | camel }};
+    {% endfor -%}
+    {% for ref_table in table.ref_tables -%}
+        @ApiModelProperty(value = "{{ ref_table.name | pascal }}")
+        @ExcelIgnore
+        @TableField(exist = false)
+        private List<{{ ref_table.name | pascal }}> {{ ref_table.name | camel }}s;
 
-{% endfor %}
-{% for column in table.foreignKeys %}
-    @ApiModelProperty(value = "{{ column.referenceTable.name | pascal }}")
-    @ExcelIgnore
-    @TableField(exist = false)
-    private {{ column.referenceTable.name | pascal }} {{ column.referenceTable.name | camel }};
-
-{% endfor %}
-{% for ftable in table.refTables%}
-    @ApiModelProperty(value = "{{ column.referenceTable.name | pascal }}")
-    @ExcelIgnore
-    @TableField(exist = false)
-    private List<{{ ftable.name | pascal }}> {{ ftable.name | camel }}s;
-
-{% endfor %}
+    {% endfor -%}
     @Override
     public Serializable pkVal() {
         return this.{{ table.primary_key }};
