@@ -8,10 +8,12 @@ use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::collections::{HashMap};
 use std::convert::TryInto;
+use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::iter::Map;
 use std::ops::Deref;
+use std::path::Path;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use eframe::egui::Key::T;
@@ -78,7 +80,7 @@ pub struct Column {
     length: u32,
     export: bool,
     set: HashMap<i64, String>,
-    has_many: String
+    has_many: String,
 }
 
 
@@ -168,7 +170,12 @@ fn render(tera: Tera) -> impl Function {
         context.insert("data", &data);
 
         let content = tera.render(&template, &context).unwrap();
-        println!("render content: {}", content);
+        // println!("render content: {}", content);
+        let pos = output.rfind('/').unwrap();
+        let path = &output[0..pos];
+
+        fs::create_dir_all(path);
+
         let mut file = File::create(output.clone())?;
         file.write_all(&content.as_bytes());
 

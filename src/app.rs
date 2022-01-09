@@ -1,7 +1,7 @@
 use eframe::{egui, epi};
 use toml::Value;
 use std::fs;
-use std::sync::Arc;
+use std::vec::Vec;
 use crate::{Column, DataSource, MyRender, Table};
 use glob::glob;
 use tera::{Function, Tera};
@@ -78,11 +78,20 @@ impl epi::App for TemplateApp {
                             let filename = format!("{}", path.display());
                             let contents = fs::read_to_string(filename).unwrap();
                             let config = contents.parse::<Value>().unwrap();
-                            let t = config["table"].as_table().unwrap();
+                            let table_cfg = config["table"].as_table().unwrap();
                             let columns = config["column"].as_array().unwrap();
                             let mut table = Table::default();
-                            table.name = t["name"].as_str().unwrap().to_string();
-                            table.comment = t["comment"].as_str().unwrap().to_string();
+                            table.name = table_cfg["name"].as_str().unwrap().to_string();
+                            table.comment = table_cfg["comment"].as_str().unwrap().to_string();
+
+                            if let Some(ref_tables) = table_cfg.get("ref_tables") {
+                                for item in ref_tables.as_array().unwrap() {
+                                    let mut ref_table = Table::default();
+                                    ref_table.name = item.as_str().unwrap().to_string();
+                                    table.ref_tables.push(ref_table);
+                                }
+                            }
+
                             for c in columns {
                                 let mut column = Column::default();
                                 column.name = c["name"].as_str().unwrap().to_string();
@@ -146,16 +155,37 @@ impl epi::App for TemplateApp {
                                     column.java_type = java_type.as_str().unwrap().to_string();
                                 }
 
-                                if let Some(ref_table) = c.get("ref_table") {
-                                    if let Some(ref_table) = ds.tables.iter().find(|&item| { item.name == column.name }) {
-                                        column.ref_table = ref_table.clone();
-                                    }
+                                if let Some(ref_table_name) = c.get("ref_table") {
+                                    let mut ref_table = Table::default();
+                                    ref_table.name = ref_table_name.as_str().unwrap().to_string();
+                                    column.ref_table = ref_table;
+
+                                    table.foreign_keys.push(column.clone())
                                 }
+
                                 table.columns.push(column);
                             }
                             ds.tables.push(table)
                         }
                         Err(e) => println!("{:?}", e),
+                    }
+                }
+
+                let tables = ds.tables.clone();
+
+                for table in ds.tables.iter_mut() {
+                    for column in table.columns.iter_mut() {
+                        if let Some(ref_table) = tables.iter().find(|&item| { item.name == column.ref_table.name }) {
+                            column.ref_table = ref_table.clone()
+                        }
+                    }
+                }
+
+                for mut table in ds.tables.iter_mut() {
+                    for mut ref_table in table.ref_tables.iter_mut() {
+                        if let Some(t) = tables.iter().find(|&item| { item.name == ref_table.name }) {
+                            ref_table = &mut t.clone();
+                        }
                     }
                 }
 

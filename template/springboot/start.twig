@@ -2,8 +2,10 @@
 {#    {% set data = {'table': table, 'db' : db} %}#}
     {% set table_name = table.name | pascal %}
     {{ table_name }}
-    {{ render(template="springboot/entity.twig", data=table, output="/Users/shan/Projects/tools/eframe_template/code/" ~ table_name ~ ".java") }}
-    {{ render(template="springboot/controller.twig", data=table, output="/Users/shan/Projects/tools/eframe_template/code/" ~ table_name ~ "Controller.java") }}
+    {{ render(template="springboot/entity.twig", data=table, output="/Users/shan/Projects/tools/eframe_template/code/entity/" ~ table_name ~ ".java") }}
+    {{ render(template="springboot/controller.twig", data=table, output="/Users/shan/Projects/tools/eframe_template/code/controller/" ~ table_name ~ "Controller.java") }}
+    {{ render(template="springboot/mapper.twig", data=table, output="/Users/shan/Projects/tools/eframe_template/code/mapper/" ~ table_name ~ "Mapper.java") }}
+    {{ render(template="springboot/mapper_xml.twig", data=table, output="/Users/shan/Projects/tools/eframe_template/code/mapper_xml/" ~ table_name ~ ".xml") }}
 
     {#    {{ render('springboot/mapper.twig', data, "#{db.name}/mapper/#{table.name | pascal }Mapper.java") }}#}
 {#    {{ render('springboot/mapper_xml.twig', data, "#{db.name}/mapper_xml/#{table.name | pascal }.xml") }}#}

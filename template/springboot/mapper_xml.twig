@@ -5,7 +5,6 @@
 
     <!-- 通用查询映射结果 -->
     <resultMap id="{{ table.name | pascal }}ResultMap" type="gm.game.entity.{{ table.name | pascal }}">
-        <id column="{{ table.name }}_{{ table.primary_key }}" property="{{ table.primary_key }}"/>
 {% for column in table.columns %}
         <result column="{{ table.name }}_{{ column.name }}" property="{{ column.name | camel }}" {% if column.java_type == 'JSONArray' %}typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"{% endif %} />
 {% endfor %}
@@ -20,7 +19,6 @@
     </resultMap>
 
     <sql id="{{ table.name | pascal }}Columns" >
-        {{ table.name }}.{{ table.primary_key }} as {{ table.name }}_{{ table.primary_key }},
         {% for column in table.columns %}{{ table.name }}.{{ column.name}} as {{ table.name }}_{{ column.name }}{% if not loop.last %},{% endif %}{% endfor %}
     </sql>
 
