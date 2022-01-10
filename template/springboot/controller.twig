@@ -1,5 +1,5 @@
 {% set table = data -%}
-package gm.game.controller;
+package {{get_env(name='namespace')}}.controller;
 
 import java.io.*;
 import java.net.URLEncoder;
@@ -18,8 +18,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.springframework.validation.annotation.Validated;
 import lombok.extern.slf4j.Slf4j;
 
-import gm.game.entity.*;
-import gm.game.mapper.*;
+import {{get_env(name='namespace')}}.entity.*;
+import {{get_env(name='namespace')}}.mapper.*;
 import com.kingnet.utils.AuthUtils;
 
 import io.swagger.annotations.Api;
@@ -38,8 +38,8 @@ import javax.validation.ConstraintViolation;
 import javax.validation.Validator;
 import javax.validation.Valid;
 import java.util.function.Consumer;
-import gm.game.validator.DefaultGroup;
-import gm.game.validator.CreateGroup;
+import {{get_env(name='namespace')}}.validator.DefaultGroup;
+import {{get_env(name='namespace')}}.validator.CreateGroup;
 
 @Api(tags = "{{ table.comment }}")
 @Slf4j
@@ -116,7 +116,6 @@ public class {{ table.name | pascal }}Controller {
     @GetMapping("/enum/{{ table.name | lower }}")
     @ApiOperation(value = "全量枚举")
     public CommonResult<List<{{ table.name | pascal }}>> all(
-        @ApiParam("主键id") @RequestParam(required = false) Integer id,
 {% for column in table.columns -%}
         @ApiParam("{{ column.comment }}") @RequestParam(required = false) {{ column.java_type }} {{ column.name | camel }},
 {% endfor -%}

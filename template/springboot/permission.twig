@@ -1,3 +1,4 @@
+{% set db = data -%}
 {% for table in db.tables %}
 insert into service_method(path, service_id, method, permission_id) value('/game/{{ table.name | lower }}', 4, 'GET',  5);
 insert into service_method(path, service_id, method, permission_id) value('/game/{{ table.name | lower }}/*', 4, 'GET',  5);

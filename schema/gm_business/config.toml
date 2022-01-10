@@ -5,4 +5,4 @@ host = "172.16.32.243"
 port = 3306
 username = "root"
 password = "fivekingnet"
-namespace = "business"
+namespace = "gm.business"

@@ -1,6 +1,6 @@
 use eframe::{egui, epi};
 use toml::Value;
-use std::fs;
+use std::{env, fs};
 use std::vec::Vec;
 use crate::{Column, DataSource, MyRender, Table};
 use glob::glob;
@@ -11,7 +11,7 @@ use std::sync::mpsc;
 use crossbeam_channel::{Receiver, Sender, unbounded};
 use mysql::*;
 use mysql::prelude::*;
-use chrono::prelude::*; // 用来处理日期
+use chrono::prelude::*;
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
@@ -85,6 +85,10 @@ impl epi::App for TemplateApp {
                 ds.username = datasource["username"].as_str().unwrap().to_string();
                 ds.password = datasource["password"].as_str().unwrap().to_string();
 
+                if let Some(namespace) = datasource.get("namespace") {
+                    ds.namespace = namespace.as_str().unwrap().to_string();
+                }
+
                 let table_file = format!("{}/table/*.toml", path.path().display());
                 for entry in glob(&table_file).expect("Failed to read glob pattern") {
                     match entry {
@@ -154,6 +158,9 @@ impl epi::App for TemplateApp {
                                 if let Some(export) = c.get("export") {
                                     column.export = export.as_bool().unwrap();
                                 }
+                                if let Some(default) = c.get("default") {
+                                    column.default = default.as_str().unwrap().to_string();
+                                }
                                 if let Some(set) = c.get("set") {
                                     let set = set.as_array().unwrap();
                                     let keys = set.get(0).unwrap().as_array().unwrap();
@@ -211,18 +218,19 @@ impl epi::App for TemplateApp {
             }
         }
 
-        // //TODO 测试
-        // let mut context = Context::new();
-        // context.insert("db", &datasources.get(0).unwrap());
-        // let content = render.generate("springboot/start.twig", &context);
-        // match content {
-        //     Ok(c) => {
-        //         println!("code generate:{}", c);
-        //         output_event_sender.send(String::from("generate success!"));
-        //     }
-        //     Err(e) => println!("{:?}", e),
-        // }
-        // //TODO 测试 end
+        //TODO 测试
+        let mut context = Context::new();
+        let database = datasources.get(0).unwrap();
+        context.insert("db", database);
+        env::set_var("namespace", database.namespace.clone());
+        let content = render.generate("springboot/start.twig", &context);
+        match content {
+            Ok(c) => {
+                output_event_sender.send(String::from("generate success!"));
+            }
+            Err(e) => println!("{:?}", e),
+        }
+        //TODO 测试 end
     }
 
     /// Called by the frame work to save state before shutdown.
@@ -256,7 +264,9 @@ impl epi::App for TemplateApp {
 
                 if ui.button("Code Generate").clicked() {
                     let mut context = Context::new();
-                    context.insert("db", &datasources.get(0).unwrap());
+                    let database = datasources.get(0).unwrap();
+                    context.insert("db", database);
+                    env::set_var("namespace", database.namespace.clone());
                     let content = render.generate("springboot/start.twig", &context);
                     match content {
                         Ok(c) => {
@@ -272,10 +282,44 @@ impl epi::App for TemplateApp {
                     let pool = Pool::new(Opts::from_url(&url[..]).unwrap()).unwrap(); // 获取连接池
                     let mut conn = pool.get_conn().unwrap();// 获取链接
 
-                    // for table in tables.iter() {
-                    //     let row = conn.query_iter("show create table bulletin");
-                    //     println!("row {:?}", row.);
-                    // }
+                    for table in tables.iter() {
+                        conn.query_drop(format!("drop table if exists `{}`", table.name));
+                        let mut sql = format!("CREATE TABLE `{}`(\n", table.name);
+                        for column in &table.columns {
+                            let mut line = String::new();
+                            line.push_str(&format!("`{}` {}", column.name, column.db_type));
+                            if column.length > 0 {
+                                line.push_str(&format!(" ({})", column.length));
+                            }
+                            if column.not_null {
+                                line.push_str(" NOT NULL");
+                            }
+                            if column.auto_increment {
+                                line.push_str(" AUTO_INCREMENT");
+                            }
+                            if column.default.len() > 0 {
+                                line.push_str(&format!(" DEFAULT {}", column.default));
+                            }
+                            if column.comment.len() > 0 {
+                                line.push_str(&format!(" COMMENT '{}'", column.comment));
+                            }
+                            line.push_str(" ,\n");
+                            sql.push_str(&line)
+                        }
+                        sql.push_str(&format!("  PRIMARY KEY (`{}`)\n", table.primary_key));
+                        for column in &table.foreign_keys {
+                            sql.push_str(&format!(",  KEY `fk_{}_{}_idx` (`{}`)\n", table.name, column.name, column.name));
+                        }
+                        for column in &table.columns {
+                            if column.unique {
+                                sql.push_str(&format!(",  UNIQUE KEY `{}_UNIQUE` (`{}`),\n", column.name, column.name));
+                            }
+                        }
+                        sql.push_str(&format!("  )\n ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='{}';", table.comment));
+                        println!("DB: {}", sql);
+                        output_event_sender.send(sql.clone());
+                        conn.query_drop(sql);
+                    }
                 }
             });
             ui.add_space(5.0);

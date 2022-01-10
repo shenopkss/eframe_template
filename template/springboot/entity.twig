@@ -1,5 +1,5 @@
 {% set table = data -%}
-package gm.game.entity;
+package {{get_env(name='namespace')}}.entity;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.excel.annotation.ExcelIgnore;
@@ -25,10 +25,10 @@ import javax.validation.constraints.NotEmpty;
 import org.hibernate.validator.constraints.Length;
 import org.hibernate.validator.constraints.Range;
 
-import gm.game.validator.Set;
-import gm.game.validator.BelongsTo;
-import gm.game.validator.DefaultGroup;
-import gm.game.validator.CreateGroup;
+import {{get_env(name='namespace')}}.validator.Set;
+import {{get_env(name='namespace')}}.validator.BelongsTo;
+import {{get_env(name='namespace')}}.validator.DefaultGroup;
+import {{get_env(name='namespace')}}.validator.CreateGroup;
 
 /**
     * <p>

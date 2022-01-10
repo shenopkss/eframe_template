@@ -82,6 +82,7 @@ pub struct Column {
     export: bool,
     set: HashMap<i64, String>,
     has_many: String,
+    default: String,
 }
 
 

@@ -1,7 +1,7 @@
 {% set table = data -%}
-package gm.game.mapper;
+package {{get_env(name='namespace')}}.mapper;
 
-import gm.game.entity.*;
+import {{get_env(name='namespace')}}.entity.*;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;

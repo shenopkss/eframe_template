@@ -1,26 +1,27 @@
-package gm.game.validator;
+{% set db = data -%}
+package {{get_env(name='namespace')}}.validator;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import javax.validation.ConstraintValidator;
 import javax.validation.ConstraintValidatorContext;
-{% for table in db.tables %}
-import gm.game.mapper.{{ table.name | pascal }}Mapper;
-{% endfor %}
-{% for table in db.tables %}
-import gm.game.entity.{{ table.name | pascal }};
-{% endfor %}
+{% for table in db.tables -%}
+import {{get_env(name='namespace')}}.mapper.{{ table.name | pascal }}Mapper;
+{% endfor -%}
+{% for table in db.tables -%}
+import {{get_env(name='namespace')}}.entity.{{ table.name | pascal }};
+{% endfor -%}
 
 public class BelongsToValidator implements ConstraintValidator<BelongsTo, Integer> {
 
     private String table;
 
-{% for table in db.tables %}
+{% for table in db.tables -%}
     @Autowired
     private {{ table.name | pascal }}Mapper {{ table.name | camel }}Mapper;
 
-{% endfor %}
+{% endfor -%}
 
     @Override
     public void initialize(BelongsTo constraintAnnotation) {
@@ -36,12 +37,12 @@ public class BelongsToValidator implements ConstraintValidator<BelongsTo, Intege
         boolean result = false;
         String message = "";
         switch (table) {
-{% for table in db.tables %}
+{% for table in db.tables -%}
             case "{{ table.name }}":
                 result = {{ table.name | camel }}Mapper.selectCount(new LambdaQueryWrapper<{{ table.name | pascal }}>().eq({{ table.name | pascal }}::getId, value)) > 0;
                 message = "不存在的{{ table.comment }}：" + value;
                 break;
-{% endfor %}
+{% endfor -%}
             default:
                 throw new Exception("BelongsToValidator 验证失败，无效的表名：" + table);
         }

@@ -19,7 +19,6 @@ db_type = "int"
 length = 11
 unsigned = true
 not_null = true
-auto_increment = true
 comment = "公告类型"
 
 [[column]]
@@ -60,14 +59,14 @@ name = "weight"
 db_type = "int"
 comment = "权重：值越大越靠前"
 not_null = true
-default = 0
+default = '0'
 
 [[column]]
 name = "is_new"
 db_type = "int"
 not_null = true
 comment = "是否新项"
-default = 0
+default = '0'
 set = [[0, 1], ["否", "是"]]
 
 [[column]]
@@ -75,14 +74,14 @@ name = "duration"
 db_type = "int"
 not_null = true
 comment = "间隔时间（分钟）"
-default = 0
+default = '0'
 
 [[column]]
 name = "state"
 db_type = "int"
 not_null = true
 comment = "在线状态"
-default = 0
+default = '0'
 set = [[0, 1, 2], ["待上线", "在线中", "已下线"]]
 
 [[column]]

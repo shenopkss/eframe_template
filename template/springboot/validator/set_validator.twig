@@ -1,0 +1,36 @@
+package {{get_env(name='namespace')}}.validator;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import {{get_env(name='namespace')}}.entity.*;
+import {{get_env(name='namespace')}}.mapper.*;
+import lombok.SneakyThrows;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import javax.validation.ConstraintValidator;
+import javax.validation.ConstraintValidatorContext;
+import java.util.Arrays;
+
+public class SetValidator implements ConstraintValidator<Set, Integer> {
+
+    private int[] targets;
+
+    @Override
+    public void initialize(Set constraintAnnotation) {
+        targets = constraintAnnotation.targets();
+    }
+
+    @SneakyThrows
+    @Override
+    public boolean isValid(Integer value, ConstraintValidatorContext context) {
+        if (value == null) {
+            return true;
+        }
+        String message = String.format(context.getDefaultConstraintMessageTemplate(), value);
+        //禁用默认的message的值
+        context.disableDefaultConstraintViolation();
+        //重新添加错误提示语句
+        context.buildConstraintViolationWithTemplate(message).addConstraintViolation();
+
+        return Arrays.stream(targets).anyMatch(i -> value.equals(i));
+    }
+}

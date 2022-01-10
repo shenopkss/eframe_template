@@ -1,44 +1,47 @@
 {% set table = data -%}
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="gm.game.mapper.{{ table.name | pascal }}Mapper">
+<mapper namespace="{{ get_env(name='namespace') }}.mapper.{{ table.name | pascal }}Mapper">
 
     <!-- 通用查询映射结果 -->
-    <resultMap id="{{ table.name | pascal }}ResultMap" type="gm.game.entity.{{ table.name | pascal }}">
-{% for column in table.columns %}
-        <result column="{{ table.name }}_{{ column.name }}" property="{{ column.name | camel }}" {% if column.java_type == 'JSONArray' %}typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"{% endif %} />
-{% endfor %}
-{% for column in table.foreign_keys %}
-        <association property="{{ column.ref_table.name | camel }}" java_type="gm.game.entity.{{ column.ref_table.name | pascal }}">
-            <id property="{{ column.ref_table.primary_key }}" column="{{ column.ref_table.name }}_{{ column.ref_table.primary_key }}" />
-{% for refcolumn in column.ref_table.columns %}
-            <result property="{{ refcolumn.name | camel }}" column="{{ column.ref_table.name }}_{{ refcolumn.name }}" />
-{% endfor %}
-        </association>
-{% endfor %}
+    <resultMap id="{{ table.name | pascal }}ResultMap" type="{{ get_env(name='namespace') }}.entity.{{ table.name | pascal }}">
+        {% for column in table.columns -%}
+            <result column="{{ table.name }}_{{ column.name }}" property="{{ column.name | camel }}" {% if column.db_type == 'json' -%}typeHandler="com.baomidou.mybatisplus.extension.handlers.FastjsonTypeHandler"{% endif -%}/>
+        {% endfor -%}
+        {% for column in table.foreign_keys -%}
+            <association property="{{ column.ref_table.name | camel }}"
+                         javaType="{{ get_env(name='namespace') }}.entity.{{ column.ref_table.name | pascal }}">
+                <id property="{{ column.ref_table.primary_key }}"
+                    column="{{ column.ref_table.name }}_{{ column.ref_table.primary_key }}"/>
+                {% for refcolumn in column.ref_table.columns -%}
+                    <result property="{{ refcolumn.name | camel }}"
+                            column="{{ column.ref_table.name }}_{{ refcolumn.name }}"/>
+                {% endfor -%}
+            </association>
+        {% endfor -%}
     </resultMap>
 
-    <sql id="{{ table.name | pascal }}Columns" >
-        {% for column in table.columns %}{{ table.name }}.{{ column.name}} as {{ table.name }}_{{ column.name }}{% if not loop.last %},{% endif %}{% endfor %}
+    <sql id="{{ table.name | pascal }}Columns">
+        {% for column in table.columns %}{{ table.name }}.{{ column.name }} as {{ table.name }}_{{ column.name }}{% if not loop.last %},{% endif %}{% endfor -%}
     </sql>
 
 
     <select id="find" parameterType="int" resultMap="{{ table.name | pascal }}ResultMap">
         select
-        <include refid="{{ table.name | pascal }}Columns" />{% if table.foreign_keys | length > 0 %},{% endif %}
+        <include refid="{{ table.name | pascal }}Columns"/>{% if table.foreign_keys | length > 0 %},{% endif -%}
 
-{% for column in table.foreign_keys %}
-        {{ column.ref_table.name }}.{{ column.ref_table.primary_key }} as {{ column.ref_table.name }}_{{ column.ref_table.primary_key }},
-{% for refcolumn in column.ref_table.columns %}
-        {{ column.ref_table.name }}.{{ refcolumn.name }} as {{ column.ref_table.name }}_{{ refcolumn.name }}{% if not loop.last %},{% endif %}
+        {% for column in table.foreign_keys -%}
+            {{ column.ref_table.name }}.{{ column.ref_table.primary_key }} as {{ column.ref_table.name }}_{{ column.ref_table.primary_key }},
+            {% for refcolumn in column.ref_table.columns -%}
+                {{ column.ref_table.name }}.{{ refcolumn.name }} as {{ column.ref_table.name }}_{{ refcolumn.name }}{% if not loop.last %},{% endif -%}
 
-{% endfor %}
-{% endfor %}
+            {% endfor -%}
+        {% endfor -%}
 
         from {{ table.name }}
-{% for column in table.foreign_keys %}
-        left join {{ column.ref_table.name }} on {{ table.name }}.{{ column.name}} = {{ column.ref_table.name }}.{{ column.ref_table.primary_key }}
-{% endfor %}
-        where {{ table.name }}.{{ table.primary_key}} = #{id} limit 1
+        {% for column in table.foreign_keys -%}
+            left join {{ column.ref_table.name }} on {{ table.name }}.{{ column.name }} = {{ column.ref_table.name }}.{{ column.ref_table.primary_key }}
+        {% endfor -%}
+        where {{ table.name }}.{{ table.primary_key }} = #{id} limit 1
     </select>
 </mapper>
