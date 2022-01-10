@@ -7,6 +7,11 @@ use glob::glob;
 use tera::{Function, Tera};
 use tera::Context;
 use tera;
+use std::sync::mpsc;
+use crossbeam_channel::{Receiver, Sender, unbounded};
+use mysql::*;
+use mysql::prelude::*;
+use chrono::prelude::*; // 用来处理日期
 
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
@@ -21,16 +26,25 @@ pub struct TemplateApp {
     #[cfg_attr(feature = "persistence", serde(skip))]
     render: MyRender,
     datasources: Vec<DataSource>,
+    #[cfg_attr(feature = "persistence", serde(skip))]
+    output_event_receiver: Receiver<String>,
+    #[cfg_attr(feature = "persistence", serde(skip))]
+    output_event_sender: Sender<String>,
+    output_events: Vec<String>,
 }
 
 impl Default for TemplateApp {
     fn default() -> Self {
+        let (sender, receiver) = unbounded::<String>();
         Self {
             // Example stuff:
             label: "Hello World!".to_owned(),
             value: 0.0,
             datasources: Vec::new(),
-            render: MyRender::new("/Users/shan/Projects/tools/eframe_template/template/**/*.twig"),
+            render: MyRender::new("/Users/shan/Projects/tools/eframe_template/template/**/*.twig", sender.clone()),
+            output_event_receiver: receiver,
+            output_event_sender: sender,
+            output_events: Vec::new(),
         }
     }
 }
@@ -54,7 +68,7 @@ impl epi::App for TemplateApp {
         //     *self = epi::get_value(storage, epi::APP_KEY).unwrap_or_default()
         // }
 
-        let Self { label, value, datasources, render } = self;
+        let Self { label, value, datasources, render, output_event_receiver, output_event_sender, output_events } = self;
 
         let paths = fs::read_dir("/Users/shan/Projects/tools/eframe_template/schema").unwrap();
         for path in paths {
@@ -154,6 +168,9 @@ impl epi::App for TemplateApp {
                                 if let Some(java_type) = c.get("java_type") {
                                     column.java_type = java_type.as_str().unwrap().to_string();
                                 }
+                                if let Some(unique) = c.get("unique") {
+                                    column.unique = unique.as_bool().unwrap();
+                                }
 
                                 if let Some(ref_table_name) = c.get("ref_table") {
                                     let mut ref_table = Table::default();
@@ -189,19 +206,23 @@ impl epi::App for TemplateApp {
                     }
                 }
 
+                output_event_sender.send(format!("Load schema {} success!", ds.database));
                 datasources.push(ds);
             }
         }
 
-        //TODO 测试
-        let mut context = Context::new();
-        context.insert("db", &datasources.get(0).unwrap());
-        let content = render.generate("springboot/start.twig", &context);
-        match content {
-            Ok(c) => println!("code generate:\n{}", c),
-            Err(e) => println!("{:?}", e),
-        }
-        //TODO 测试 end
+        // //TODO 测试
+        // let mut context = Context::new();
+        // context.insert("db", &datasources.get(0).unwrap());
+        // let content = render.generate("springboot/start.twig", &context);
+        // match content {
+        //     Ok(c) => {
+        //         println!("code generate:{}", c);
+        //         output_event_sender.send(String::from("generate success!"));
+        //     }
+        //     Err(e) => println!("{:?}", e),
+        // }
+        // //TODO 测试 end
     }
 
     /// Called by the frame work to save state before shutdown.
@@ -214,7 +235,7 @@ impl epi::App for TemplateApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
-        let Self { label, value, datasources, render } = self;
+        let Self { label, value, datasources, render, output_event_receiver, output_event_sender, output_events } = self;
 
         // Examples of how to create different panels and windows.
         // Pick whichever suits you.
@@ -222,6 +243,8 @@ impl epi::App for TemplateApp {
         // For inspiration and more examples, go to https://emilk.github.io/egui
 
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+            ui.add_space(10.0);
+
             // The top panel is often a good place for a menu bar:
             egui::menu::bar(ui, |ui| {
                 // egui::menu::menu(ui, "File", |ui| {
@@ -230,16 +253,32 @@ impl epi::App for TemplateApp {
                 //     }
                 // });
 
-                if ui.button("Run").clicked() {
+
+                if ui.button("Code Generate").clicked() {
                     let mut context = Context::new();
                     context.insert("db", &datasources.get(0).unwrap());
                     let content = render.generate("springboot/start.twig", &context);
                     match content {
-                        Ok(c) => println!("code generate:\n{}", c),
+                        Ok(c) => {
+                            output_event_sender.send(String::from("generate success!"));
+                        }
                         Err(e) => println!("{:?}", e),
                     }
                 }
+
+                if ui.button("Database Sync").clicked() {
+                    let DataSource { username, password, host, port, database, tables, .. } = datasources.get(0).unwrap();
+                    let url = format!("mysql://{username}:{password}@{host}:{port}/{database}", username = username, password = password, host = host, port = port, database = database);
+                    let pool = Pool::new(Opts::from_url(&url[..]).unwrap()).unwrap(); // 获取连接池
+                    let mut conn = pool.get_conn().unwrap();// 获取链接
+
+                    // for table in tables.iter() {
+                    //     let row = conn.query_iter("show create table bulletin");
+                    //     println!("row {:?}", row.);
+                    // }
+                }
             });
+            ui.add_space(5.0);
         });
 
         egui::SidePanel::left("side_panel").show(ctx, |ui| {
@@ -280,17 +319,68 @@ impl epi::App for TemplateApp {
             //     });
             // });
         });
+        egui::SidePanel::right("side_panel_template").show(ctx, |ui| {
+            ui.add_space(5.0);
+            ui.heading("Template Explorer");
+
+            ui.add_space(5.0);
+
+            for name in render.get_template_names() {
+                ui.collapsing(name.clone(), |ui| {
+                    // for table in datasource.tables {
+                    //     ui.collapsing(table.name.clone(), |ui| {
+                    //         for column in table.columns {
+                    //             ui.label(column.name.clone());
+                    //         }
+                    //     });
+                    // }
+                });
+            }
+        });
 
         egui::CentralPanel::default().show(ctx, |ui| {
+
+            // ui.horizontal(|ui| {
+            //     ui.label("代码生成路径:");
+            //     ui.add(egui::TextEdit::singleline(&mut code_path).desired_width(120.0));
+            // });
+
             // The central panel the region left after adding TopPanel's and SidePanel's
 
-            ui.heading("eframe projects");
-            ui.hyperlink("https://github.com/emilk/eframe_template");
-            ui.add(egui::github_link_file!(
-                "https://github.com/emilk/eframe_template/blob/master/",
-                "Source code."
-            ));
-            egui::warn_if_debug_build(ui);
+            // ui.heading("eframe projects");
+            // ui.hyperlink("https://github.com/emilk/eframe_template");
+            // ui.add(egui::github_link_file!(
+            //     "https://github.com/emilk/eframe_template/blob/master/",
+            //     "Source code."
+            // ));
+            // egui::warn_if_debug_build(ui);
+        });
+
+        output_event_receiver.try_iter().for_each(|event| {
+            output_events.push(event);
+        });
+
+        egui::TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
+            ui.set_min_height(200.0);
+            ui.add_space(5.0);
+            ui.horizontal_wrapped(|ui| {
+                ui.spacing_mut().item_spacing.x = 50.0;
+                ui.heading("Event Log");
+                if ui.button("clear all").clicked() {
+                    output_events.clear();
+                }
+            });
+            ui.add_space(5.0);
+            // ui.separator();
+
+            egui::ScrollArea::vertical()
+                .stick_to_bottom()
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    for event in output_events {
+                        ui.label(event);
+                    }
+                });
         });
     }
 }

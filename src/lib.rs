@@ -16,6 +16,7 @@ use std::ops::Deref;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
+use crossbeam_channel::Sender;
 use eframe::egui::Key::T;
 pub use app::TemplateApp;
 
@@ -86,16 +87,18 @@ pub struct Column {
 
 struct MyRender {
     tera: Tera,
+    sender: Sender<String>,
 }
 
 impl MyRender {
-    fn new(path: &str) -> Self {
+    fn new(path: &str, sender: Sender<String>) -> Self {
         let mut tera = MyRender::register_tera(path);
         let mut tera2 = MyRender::register_tera(path);
 
-        tera.register_function("render", render(tera2));
+        tera.register_function("render", render(tera2, sender.clone()));
         let mut render = MyRender {
-            tera
+            tera,
+            sender,
         };
 
         render.setup();
@@ -108,6 +111,10 @@ impl MyRender {
         self.tera.render(template_name, context)
     }
 
+    pub fn get_template_names(&mut self) -> impl Iterator<Item=&str> {
+        return self.tera.get_template_names();
+    }
+
     fn register_tera(path: &str) -> Tera {
         let mut tera = Tera::new(&path).unwrap();
         tera.register_filter("camel", camel);
@@ -116,7 +123,7 @@ impl MyRender {
     }
 }
 
-fn render(tera: Tera) -> impl Function {
+fn render(tera: Tera, sender: Sender<String>) -> impl Function {
     Box::new(move |args: &HashMap<String, Value>| -> Result<Value, Error> {
         let template = match args.get("template") {
             Some(template) => match from_value::<String>(template.clone()) {
@@ -162,6 +169,7 @@ fn render(tera: Tera) -> impl Function {
             ))),
         };
 
+        sender.send(format!("render template: {:?}", template));
         println!("render template: {:?}", template);
         println!("render data: {:?}", data);
         println!("render output: {:?}", output);
